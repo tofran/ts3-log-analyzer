@@ -63,7 +63,7 @@ public class DB{
      * @return all the info abaout the clients on the DB
      */
     public static String toStringAll(){
-        String st = "Client's Server ID\tNickname\tNumber Connections\tCumulative connection time (min)\tLongest connection time (min)";
+        String st = "Client's Server ID\tNickname\tNumber Connections\tCumulative connection time (min)\tLongest connection time (min)\n";
         for(Client each : clients){
             st += each.toString() + "\n";
         }
