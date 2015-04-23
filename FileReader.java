@@ -1,70 +1,94 @@
-import java.util.*;
+import java.util.Scanner;
 import java.io.File;
-import org.joda.time.*;
+import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormat;
-import java.time.format.*;
 
 public class FileReader{
     private Scanner input;
+    private File sourceFile;
     
-    public FileReader(){
+    /**
+     * Creates a file reader
+     * 
+     * @param path the file path
+     */
+    public FileReader(String path){
+        openFile(path);
+        readFile();
+        input.close();
+    }   
+    
+    /**
+     * Opens the file
+     */
+    private void openFile(String path){
         try{
-            File sourceFile;
-            sourceFile = new File("input.log");
+            sourceFile = new File(path);
             input = new Scanner(sourceFile);
         }
         catch(Exception e){
-            System.out.println("Exception");
+            System.out.println("Exception 1 - ERROR READING FILE");
+            System.exit(1);
         }
-    }   
+    }
     
-    public void readFile(){
-        int lineNum = 0;
-        while (input.hasNextLine()) {
+    /**
+     * Reads the file with Scanner
+     */
+    private void readFile(){
+        while(input.hasNextLine()) {
             String line = input.nextLine();
-            lineNum++;
-            if(line.indexOf("client connected")!=-1){ 
-                clientLeft(line);
+            if(line.indexOf("| client connected")!=-1){ 
+                clientJoined(line);
             }
-            if(line.indexOf("client disconnected")!=-1){ 
+            if(line.indexOf("| client disconnected")!=-1){ 
                 clientLeft(line);
             }
         }
     }
-   
-    public int getId(String text){
+        
+    /**
+     * 
+     */
+    private int getId(String text){
         text = text.substring(text.indexOf("(id:")+4,text.indexOf(")"));
         return Integer.parseInt(text);
     }
     
-    public String getNickname(String text){
+    private String getNickname(String text){
         text = text.substring(text.indexOf("connected '")+11,text.indexOf("'(id:"));
         return text;
     }
     
     /**
-     * yyyy-MM-dd HH:mm:ss
-     * length = 19
-     * 
+     * Converts a date in a string with the format yyyy-MM-dd HH:mm:ss (length = 19)
+     *
+     * @param the String with the date/time
+     * @return DateTime the joda time of the provided time
      */
-    public DateTime getTime(String text){
+    private DateTime getTime(String text){
         text = text.substring(0,19);
         DateTime dt = DateTime.parse(text, DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
-        System.out.println(dt);
         return dt;
         // http://stackoverflow.com/questions/6252678/converting-a-date-string-to-a-datetime-object-using-joda-time-library
     }
     
-    public void clientLeft(String line){
+    private void clientJoined(String line){
         int id = getId(line);
         DateTime date = getTime(line);
         String nickname = getNickname(line);
         if(DB.getPos(id)==-1){
             DB.add(new Client(id, nickname, date));
         }
+        else{
+            DB.connect(id, date);
+        }
     }
     
-    public void clientJoined(String line){
+    /**
+     * @param line the log line where the client left
+     */
+    private void clientLeft(String line){
         DB.disconnect(getId(line), getTime(line));
     }
 }
