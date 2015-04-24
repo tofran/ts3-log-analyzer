@@ -13,11 +13,12 @@ public class Main{
         
         readFile();
         while(!exit){
-            System.out.println("\nWhat do you want to do next?" +
+            System.out.println("\nWhat do you want to do now?" +
                                 "\n 1 - Save to file;" + 
                                 "\n 2 - Print results to screen;" +
                                 "\n 3 - Combine with another file;" +
-                                "\n 4 - exit");
+                                "\n 4 - Flush database;" +
+                                "\n 5 - exit");
             choice = sc.next();
             switch(choice.trim()){                
                 case "2":
@@ -31,12 +32,16 @@ public class Main{
                 case "3":
                     readFile();
                     break;                     
-                     
+                
                 case "4":
+                    DB.clear();
+                    System.out.printf("Database cleared!");
+                    break;
+                    
+                case "5":
                     exit=true;
                     break;
             }
-            
         } 
     }
     
@@ -44,12 +49,17 @@ public class Main{
         System.out.printf("log name/path: ");
         String input = sc.next();            
         FileReader fr = new FileReader(input);
+        fr.readFile();
         System.out.println("File loaded to memory!");
     }
     
     private static void saveToFile(){
-        System.out.printf("file path (WILL OVERWRITE): ");
-        String input = sc.next();  
+        System.out.printf("File path: ");
+        String input = sc.next();
+        while(FileWriter.isFileThere(input)){
+            System.out.printf("File already in use. File path: ");
+            input = sc.next();
+        }
         new FileWriter(input, DB.toStringAll());
         System.out.println("Success");
     }
