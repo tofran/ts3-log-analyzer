@@ -7,8 +7,7 @@ import org.joda.time.DateTime;
  */
 public class Client{
     private String nickname;
-    private int id;
-    private int connections;
+    private int id, connections, timeOutCounter;
     private Duration timeConnected;
     private Duration maxTimeConnected;
     private DateTime lastJoined;
@@ -18,6 +17,7 @@ public class Client{
      * 
      * @param id the client server sided unique ID
      * @param the nickname
+     * @param 
      */
     public Client(int id, String nickname){
         this.nickname = nickname;
@@ -25,22 +25,7 @@ public class Client{
         timeConnected = new Duration(0);
         maxTimeConnected = new Duration(0);
         connections=1;
-    }
-    
-    /**
-     * Construcs a client
-     * 
-     * @param id the client server sided unique ID
-     * @param the nickname
-     * @param lastJoined when he joined the server (see joined(DateTime when) )
-     */
-    public Client(int id, String nickname, DateTime lastJoined){
-        this.nickname = nickname;
-        this.id = id;
-        this.lastJoined = lastJoined;
-        timeConnected = new Duration(0);
-        maxTimeConnected = new Duration(0);
-        connections=1;
+        timeOutCounter=0;
     }
     
     /**
@@ -84,22 +69,29 @@ public class Client{
         }
         timeConnected = timeConnected.plus(dur);
     }
+
+    /**
+     * Increments the time out counter
+     */
+    public void timedOut(){
+        timeOutCounter++;
+    }
     
     /**
      * @return a String with the client info (separeted by \t)
      */
     public String toString(){
-        return id + "\t" + nickname + "\t" + connections +
-                "\t" + timeConnected.getStandardMinutes() + "\t" + maxTimeConnected.getStandardMinutes();  
+        return id + "\t" + nickname + "\t" + timeConnected.getStandardMinutes() + 
+            "\t" + maxTimeConnected.getStandardMinutes() + "\t" + connections + "\t" +timeOutCounter;  
     }
     
     /**
      * Prints the client info to the console with the following format:
-     * ID  | Nickname                      |  * |SumTime(min)| Max Time
-     * where * is the number of connections;
-     * 
+     * ID  | Nickname |  number of connections | Sum time of all connections | Longest connection
      */
     public void print(){
-        System.out.printf("%-4d| %-30s| %-3d| %s\n", id, nickname, connections, timeConnected.getStandardMinutes());  
+        System.out.printf("%-4d| %-30s| %-11d| %-6d| %d\n", 
+            id, nickname, timeConnected.getStandardMinutes(),
+            maxTimeConnected.getStandardMinutes(), connections);  
     }
 }

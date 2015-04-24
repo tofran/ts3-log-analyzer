@@ -14,8 +14,6 @@ public class FileReader{
      */
     public FileReader(String path){
         openFile(path);
-        readFile();
-        input.close();
     }   
     
     /**
@@ -35,23 +33,35 @@ public class FileReader{
     /**
      * Reads the file with Scanner
      */
-    private void readFile(){
+    public void readFile(){
+        int lineNumber = 0;
+        String line = "";
         while(input.hasNextLine()) {
-            String line = input.nextLine();
-            if(line.indexOf("| client connected")!=-1){ 
-                clientJoined(line);
+            try{
+                lineNumber++; 
+                line = input.nextLine();
+                if(line.indexOf("| client connected")!=-1){ 
+                    clientJoined(line);
+                }
+                else if(line.indexOf("| client disconnected")!=-1){ 
+                    clientLeft(line);
+                }
             }
-            if(line.indexOf("| client disconnected")!=-1){ 
-                clientLeft(line);
+            catch(Exception e){
+                System.out.println("Exception @line:" + lineNumber + "\n" + line);
+                input.close();
+                System.exit(1);
             }
         }
+        input.close();
     }
         
     /**
      * 
      */
-    private int getId(String text){
-        text = text.substring(text.indexOf("(id:")+4,text.indexOf(")"));
+    public int getId(String text){
+        text = text.substring(text.indexOf("'(id:")+5);
+        text = text.substring(0,text.indexOf(") "));
         return Integer.parseInt(text);
     }
     
@@ -70,7 +80,6 @@ public class FileReader{
         text = text.substring(0,19);
         DateTime dt = DateTime.parse(text, DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
         return dt;
-        // http://stackoverflow.com/questions/6252678/converting-a-date-string-to-a-datetime-object-using-joda-time-library
     }
     
     private void clientJoined(String line){
@@ -78,17 +87,20 @@ public class FileReader{
         DateTime date = getTime(line);
         String nickname = getNickname(line);
         if(DB.getPos(id)==-1){
-            DB.add(new Client(id, nickname, date));
+            DB.add(new Client(id, nickname));
         }
-        else{
-            DB.connect(id, date);
-        }
+        DB.connect(id, date);
     }
     
     /**
      * @param line the log line where the client left
      */
     private void clientLeft(String line){
-        DB.disconnect(getId(line), getTime(line));
+        boolean didClientTimedOut = false;
+        if(line.indexOf(") reason 'reasonmsg=connection lost'")!=-1){
+            didClientTimedOut = true;
+            System.out.println("connection lost @"+line);
+        }
+        DB.disconnect(getId(line), getTime(line), didClientTimedOut);
     }
 }

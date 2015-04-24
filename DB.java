@@ -31,11 +31,15 @@ public class DB{
      * 
      * @param who the id of the client
      * @param when the theme that of the client DC
+     * @param didClientTimedOut true/false, if the client diconnected by timming out
      */
-    public static void disconnect(int id, DateTime when){
+    public static void disconnect(int id, DateTime when, boolean didClientTimedOut){
         int pos = getPos(id);
         if(pos!=-1){
-            clients.get(getPos(id)).disconnected(when);
+            clients.get(pos).disconnected(when);
+            if(didClientTimedOut){
+                clients.get(pos).timedOut();
+            }
         }
         else{
              System.out.println("Client:" + id + " cant disconnect because he was not found");
@@ -63,7 +67,8 @@ public class DB{
      * @return all the info abaout the clients on the DB
      */
     public static String toStringAll(){
-        String st = "Client's Server ID\tNickname\tNumber Connections\tCumulative connection time (min)\tLongest connection time (min)\n";
+        String st = "Client ID\tNickname\tCumulative connection time (min)\tLongest connection time (min)" +
+                        "\tConnection counter\tTimeOut counter\n";
         for(Client each : clients){
             st += each.toString() + "\n";
         }
@@ -74,9 +79,16 @@ public class DB{
      * Prints every client
      */
     public static void printAllFormatted(){
-        System.out.println("ID  | Nickname                      |    |SumTime(min)| Longest connection");
+        System.out.println("ID  | Nickname                      |SumTime(min)|Longest|Count");
         for(Client each : clients){
             each.print();
         }
+    }
+    
+    /**
+     * This method will delete ALL info in the db
+     */
+    public static void clear(){
+        clients.clear();
     }
 }
