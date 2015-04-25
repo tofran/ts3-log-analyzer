@@ -1,13 +1,16 @@
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import java.util.HashMap;
 /**
  * This class defines a User/Client
  * 
  * @author ToFran
  */
 public class Client{
-    private String nickname;
-    private int id, connections, timeOutCounter;
+    public static final boolean debug = false;
+    //private String nickname;
+    private HashMap<String,Integer> nicknames;
+    private int id, connections, timeOutCounter, aditionalConnections;
     private boolean isConnected;
     private Duration timeConnected, maxTimeConnected;
     private Instant lastJoined;
@@ -20,13 +23,15 @@ public class Client{
      * @param 
      */
     public Client(int id, String nickname){
-        this.nickname = removeAsciiArt(nickname);
+        //this.nickname = removeAsciiArt(nickname);
         this.id = id;
         timeConnected = new Duration(0);
         maxTimeConnected = new Duration(0);
+        nicknames = new HashMap<String,Integer>();
         connections=1;
         timeOutCounter=0;
         isConnected = false;
+        aditionalConnections = 0;
     }
     
     /**
@@ -54,12 +59,40 @@ public class Client{
     }
     
     /**
-     * @return the first nickname that the client used to join
+     * @return the moast used nickname
      */
     public String getNickname(){
-        return nickname;
+        int max = 0;
+        String maxNickname = "";
+        for(String each : nicknames.keySet()){
+            if(nicknames.get(each)>max){
+                max = nicknames.get(each);
+                maxNickname = each;
+            }
+        }
+        return maxNickname;
     }
     
+    /**
+     * Increases teh count of the desired nickname
+     * 
+     * @param the nockname to increase
+     */
+    private void usedNickname(String name){
+        if(name!=null && !name.equals("")){
+            name = removeAsciiArt(name);
+            if(nicknames.containsKey(name)){
+                nicknames.put(name, (nicknames.get(name)+1));
+            }
+            else{
+                nicknames.put(name, 1);
+            }
+        }
+    }
+    
+    /**
+     * @return if the client is connected or not
+     */
     public boolean isConnected(){
         return isConnected;
     }
@@ -68,27 +101,51 @@ public class Client{
      * Connects the clients to the server at a specific time
      * 
      * @param when the Instant when the client joined
+     * @param nickname
      */
-    public void joined(Instant when){
-        connections++;
-        lastJoined = when;
-        isConnected = true;
+    public void joined(Instant when, String nickname){
+        if(!isConnected){
+            connections++;
+            lastJoined = when;
+            isConnected = true;
+        }
+        else{
+            aditionalConnections++;
+            if(debug){
+                System.out.println("creted an adition connection for id:" + id + " currently @" + aditionalConnections);
+            }
+        }
+        usedNickname(nickname);
     }
     
     /**
      * Disconnects the client from the server
      */
-    public void disconnected(Instant when){
+    public void disconnected(Instant when, String nickname){
         if(isConnected){
-            Duration dur = new Duration(lastJoined.getMillis(), when.getMillis());
-            if(dur.compareTo(maxTimeConnected)>0){
-                maxTimeConnected = dur;
+            if(aditionalConnections==0){
+                try{
+                    Duration dur = new Duration(lastJoined.getMillis(), when.getMillis());
+                    if(dur.compareTo(maxTimeConnected)>0){
+                        maxTimeConnected = dur;
+                    }
+                    isConnected = false;
+                    timeConnected = timeConnected.plus(dur);
+                }
+                catch(Exception e){
+                    System.out.println("Something went whrong disconectiong " + nickname + " @time:" + when);
+                }
             }
-            isConnected = false;
-            timeConnected = timeConnected.plus(dur);
+            else{
+                aditionalConnections--;
+                if(debug){
+                    System.out.println("decremented adition connection for id:" + id + " currently @" + aditionalConnections);
+                }
+            }
+            usedNickname(nickname);
         }
         else{
-             System.out.println("Client id:" + id + " cant disconnect: NOT CONNECTED");
+             System.out.println("Client id:" + id + " cant disconnect on " + when + ": CLIENT NOT CONNECTED");
         }
     }
 
@@ -103,7 +160,7 @@ public class Client{
      * @return a String with the client info (separeted by \t)
      */
     public String toString(){
-        return id + "\t" + nickname + "\t" + timeConnected.getStandardMinutes() + 
+        return id + "\t" + getNickname() + "\t" + timeConnected.getStandardMinutes() + 
             "\t" + maxTimeConnected.getStandardMinutes() + "\t" + connections + "\t" +timeOutCounter;  
     }
     
@@ -113,7 +170,7 @@ public class Client{
      */
     public void print(){
         System.out.printf("%-4d| %-30s| %-11d| %-6d| %d\n", 
-            id, nickname, timeConnected.getStandardMinutes(),
+            id, getNickname(), timeConnected.getStandardMinutes(),
             maxTimeConnected.getStandardMinutes(), connections);  
     }
 }
