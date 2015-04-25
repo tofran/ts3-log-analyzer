@@ -122,7 +122,7 @@ public class FileReader{
      * @param the String with the date/time
      * @return DateTime the joda time of the provided time
      */
-    public static Instant getTime(String line){
+    private static Instant getTime(String line){
         String text = line;
         text = text.substring(0,19);
         Instant dt = null;
@@ -159,5 +159,12 @@ public class FileReader{
             didClientTimedOut = true;
         }
         DB.disconnect(getId(line), getNickname(line), getTime(line), didClientTimedOut);
+    }
+    
+    /**
+     * @return the total lines analyzed
+     */
+    public static int getTotalLines(){
+        return totalLines;
     }
 }
