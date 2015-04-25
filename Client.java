@@ -1,5 +1,5 @@
 import org.joda.time.Duration;
-import org.joda.time.DateTime;
+import org.joda.time.Instant;
 /**
  * This class defines a User/Client
  * 
@@ -8,9 +8,9 @@ import org.joda.time.DateTime;
 public class Client{
     private String nickname;
     private int id, connections, timeOutCounter;
-    private Duration timeConnected;
-    private Duration maxTimeConnected;
-    private DateTime lastJoined;
+    private boolean isConnected;
+    private Duration timeConnected, maxTimeConnected;
+    private Instant lastJoined;
 
     /**
      * Construcs a client
@@ -20,12 +20,23 @@ public class Client{
      * @param 
      */
     public Client(int id, String nickname){
-        this.nickname = nickname;
+        this.nickname = removeAsciiArt(nickname);
         this.id = id;
         timeConnected = new Duration(0);
         maxTimeConnected = new Duration(0);
         connections=1;
         timeOutCounter=0;
+        isConnected = false;
+    }
+    
+    /**
+     * Removes TS3 ascii art in the format: "(&#...;)|(&#....;)|(&#.....;)" and trims adjacebt spaces
+     * Ex: "&#0000; &#995; NAME_ &#90695; &#A778;"
+     * will return "NAME_"
+     */
+    private String removeAsciiArt(String text){
+        text = text.trim().replaceAll("(&#...;)|(&#....;)|(&#.....;)", "").trim();
+        return text;
     }
     
     /**
@@ -49,25 +60,36 @@ public class Client{
         return nickname;
     }
     
+    public boolean isConnected(){
+        return isConnected;
+    }
+    
     /**
      * Connects the clients to the server at a specific time
      * 
-     * @param when the DateTime when the client joined
+     * @param when the Instant when the client joined
      */
-    public void joined(DateTime when){
+    public void joined(Instant when){
         connections++;
         lastJoined = when;
+        isConnected = true;
     }
     
     /**
      * Disconnects the client from the server
      */
-    public void disconnected(DateTime when){
-        Duration dur = new Duration(lastJoined.getMillis(), when.getMillis());
-        if(dur.compareTo(maxTimeConnected)>0){
-            maxTimeConnected = dur;
+    public void disconnected(Instant when){
+        if(isConnected){
+            Duration dur = new Duration(lastJoined.getMillis(), when.getMillis());
+            if(dur.compareTo(maxTimeConnected)>0){
+                maxTimeConnected = dur;
+            }
+            isConnected = false;
+            timeConnected = timeConnected.plus(dur);
         }
-        timeConnected = timeConnected.plus(dur);
+        else{
+             System.out.println("Client id:" + id + " cant disconnect: NOT CONNECTED");
+        }
     }
 
     /**
