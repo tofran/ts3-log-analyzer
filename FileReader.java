@@ -11,6 +11,8 @@ import org.joda.time.format.DateTimeFormat;
  */
 public class FileReader{
     private static Scanner input;
+    public static final boolean debug = false;
+    private static int totalLines = 0;
 
     /**
      * Executes the file reading to memmory
@@ -32,10 +34,10 @@ public class FileReader{
             readFile();
             input.close();
         }
-        else{
+        else if(sourceFile.isDirectory()){
             File[] fileList = sourceFile.listFiles();
             if(fileList.length>=2){
-                System.out.printf("Files found:\n %s \nTO\n %s\nContinue? (y/n)", 
+                System.out.printf("Found " + fileList.length + " files:\n %s \nTO\n %s\nContinue? (y/n)", 
                         fileList[0].getName(), fileList[fileList.length-1].getName());
                 Scanner consoleScanner = new Scanner(System.in);
                 String consoleInput = consoleScanner.next();
@@ -45,7 +47,7 @@ public class FileReader{
                         openFile(each);
                         readFile();
                         input.close();
-                        System.out.printf("done\n");
+                        System.out.printf(" done\n");
                     }
                 }
             }
@@ -92,8 +94,15 @@ public class FileReader{
                 input.close();
                 System.exit(1);
             }
+            if(debug){
+                System.out.println("@line:" + lineNumber);
+            }
         }
         DB.disconnectAll(getTime(line));
+        totalLines += lineNumber;
+        if(debug){
+                System.out.printf(" processed " + lineNumber + " lines\n");
+        }
     }
         
     private static int getId(String text){
@@ -138,7 +147,7 @@ public class FileReader{
         if(DB.getPos(id)==-1){
             DB.add(new Client(id, nickname));
         }
-        DB.connect(id, date);
+        DB.connect(id, date, nickname);
     }
     
     /**
@@ -149,6 +158,6 @@ public class FileReader{
         if(line.indexOf(") reason 'reasonmsg=connection lost'")!=-1){
             didClientTimedOut = true;
         }
-        DB.disconnect(getId(line), getTime(line), didClientTimedOut);
+        DB.disconnect(getId(line), getNickname(line), getTime(line), didClientTimedOut);
     }
 }
