@@ -51,7 +51,7 @@ public class Main{
         System.out.printf("log name/path: ");
         String input = sc.next();            
         FileReader.execute(input);
-        System.out.println("Finished!");
+        System.out.println(FileReader.getTotalLines() + " lines analized!");
     }
       
     private static void saveToFile(){
