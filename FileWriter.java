@@ -6,7 +6,7 @@ import java.io.File;
  * @authour ToFran
  */
 public class FileWriter{
-    private static Formatter fmt;
+    private static Formatter fmt = null;
     
     public FileWriter(String path, String text){
         openFile(path);
