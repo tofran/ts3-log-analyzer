@@ -1,31 +1,71 @@
 import java.util.Scanner;
 import java.io.File;
 import org.joda.time.DateTime;
+import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
 
+/**
+ * Reads TS3 log files and adds them to the database
+ * 
+ * @author ToFran
+ */
 public class FileReader{
-    private Scanner input;
-    private File sourceFile;
-    
+    private static Scanner input;
+
     /**
-     * Creates a file reader
+     * Executes the file reading to memmory
      * 
-     * @param path the file path
+     * @param path the path for the file 
      */
-    public FileReader(String path){
-        openFile(path);
-    }   
+    public static void execute(String path){
+        File sourceFile = null;
+        try{
+            sourceFile = new File(path);
+        }
+        catch(Exception e){
+            System.out.println("Exception 1 - ERROR READING FILE/PATH: " + path);
+            System.exit(1);
+        }
+        
+        if(sourceFile.isFile()){
+            openFile(sourceFile);
+            readFile();
+            input.close();
+        }
+        else{
+            File[] fileList = sourceFile.listFiles();
+            if(fileList.length>=2){
+                System.out.printf("Files found:\n %s \nTO\n %s\nContinue? (y/n)", 
+                        fileList[0].getName(), fileList[fileList.length-1].getName());
+                Scanner consoleScanner = new Scanner(System.in);
+                String consoleInput = consoleScanner.next();
+                if(consoleInput.equals("y")){
+                    for(File each : fileList){
+                        System.out.printf("Reading file %s ...", each.getName());
+                        openFile(each);
+                        readFile();
+                        input.close();
+                        System.out.printf("done\n");
+                    }
+                }
+            }
+            else{
+                System.out.println("FOLDER DOESNT HAVE (ENOUGH) FILES");
+            }
+        }
+    }
     
     /**
      * Opens the file
+     * 
+     * @param sourceFile the file
      */
-    private void openFile(String path){
+    private static void openFile(File sourceFile){
         try{
-            sourceFile = new File(path);
             input = new Scanner(sourceFile);
         }
         catch(Exception e){
-            System.out.println("Exception 1 - ERROR READING FILE");
+            System.out.println("Exception 1 - ERROR OPENING FILE");
             System.exit(1);
         }
     }
@@ -33,7 +73,7 @@ public class FileReader{
     /**
      * Reads the file with Scanner
      */
-    public void readFile(){
+    private static void readFile(){
         int lineNumber = 0;
         String line = "";
         while(input.hasNextLine()) {
@@ -53,19 +93,16 @@ public class FileReader{
                 System.exit(1);
             }
         }
-        input.close();
+        DB.disconnectAll(getTime(line));
     }
         
-    /**
-     * 
-     */
-    public int getId(String text){
+    private static int getId(String text){
         text = text.substring(text.indexOf("'(id:")+5);
         text = text.substring(0,text.indexOf(") "));
         return Integer.parseInt(text);
     }
     
-    private String getNickname(String text){
+    private static String getNickname(String text){
         text = text.substring(text.indexOf("connected '")+11,text.indexOf("'(id:"));
         return text;
     }
@@ -76,15 +113,27 @@ public class FileReader{
      * @param the String with the date/time
      * @return DateTime the joda time of the provided time
      */
-    private DateTime getTime(String text){
+    public static Instant getTime(String line){
+        String text = line;
         text = text.substring(0,19);
-        DateTime dt = DateTime.parse(text, DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
+        Instant dt = null;
+        try{
+             dt = Instant.parse(text, DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
+        }
+        catch(Exception e){
+            System.out.println("id:" + getId(line) + 
+                " Tried to join in a in a local time does not exist: " + line.substring(0,19) +
+                " joda.time.IllegalInstantException Daylight saving time?");
+        }
         return dt;
     }
     
-    private void clientJoined(String line){
+    /**
+     * @param line the log line where the client left
+     */
+    private static void clientJoined(String line){
         int id = getId(line);
-        DateTime date = getTime(line);
+        Instant date = getTime(line);
         String nickname = getNickname(line);
         if(DB.getPos(id)==-1){
             DB.add(new Client(id, nickname));
@@ -95,11 +144,10 @@ public class FileReader{
     /**
      * @param line the log line where the client left
      */
-    private void clientLeft(String line){
+    private static void clientLeft(String line){
         boolean didClientTimedOut = false;
         if(line.indexOf(") reason 'reasonmsg=connection lost'")!=-1){
             didClientTimedOut = true;
-            System.out.println("connection lost @"+line);
         }
         DB.disconnect(getId(line), getTime(line), didClientTimedOut);
     }
