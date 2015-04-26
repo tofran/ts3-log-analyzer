@@ -164,7 +164,9 @@ public class FileReader{
     /**
      * @return the total lines analyzed
      */
-    public static int getTotalLines(){
-        return totalLines;
+    public static int getAndResetTotalLines(){
+        int lines = totalLines;
+        totalLines = 0;
+        return lines;
     }
 }
