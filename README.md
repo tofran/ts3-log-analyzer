@@ -1,5 +1,7 @@
 # TS3 Log Analyser 
 
+[![Join the chat at https://gitter.im/ToFran/TS3LogAnalyzer](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ToFran/TS3LogAnalyzer?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ###Info
 **This program analyzes TeamSpeak 3 logs**
 
