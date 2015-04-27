@@ -37,7 +37,7 @@ public class FileReader{
         else if(sourceFile.isDirectory()){
             File[] fileList = sourceFile.listFiles();
             if(fileList.length>=2){
-                System.out.printf("Found " + fileList.length + " files:\n %s \nTO\n %s\nContinue? (y/n)", 
+                System.out.printf("Found " + fileList.length + " files:\nFROM: %s \nTO: %s\nContinue? (y/n)", 
                         fileList[0].getName(), fileList[fileList.length-1].getName());
                 Scanner consoleScanner = new Scanner(System.in);
                 String consoleInput = consoleScanner.next();
