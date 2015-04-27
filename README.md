@@ -5,7 +5,7 @@
 ###Info
 **This program analyzes TeamSpeak 3 logs**
 
-**Version:** 1.0n (25 April 2015)
+**Version:** 1.0.21-beta (26 April 2015)
 
 **AUTHOR:** ToFran - http://tofran.com
 
