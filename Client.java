@@ -1,19 +1,20 @@
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import java.util.HashMap;
+
 /**
  * This class defines a User/Client
  * 
  * @author ToFran
  */
 public class Client{
-    public static final boolean debug = false;
+    public static final boolean DEBUG = false;
     //private String nickname;
     private HashMap<String,Integer> nicknames;
     private int id, connections, timeOutCounter, aditionalConnections;
     private boolean isConnected;
-    private Duration timeConnected, maxTimeConnected;
-    private Instant lastJoined;
+    private int timeConnected, maxTimeConnected;
+    private int lastJoined;
 
     /**
      * Construcs a client
@@ -25,8 +26,8 @@ public class Client{
     public Client(int id, String nickname){
         //this.nickname = removeAsciiArt(nickname);
         this.id = id;
-        timeConnected = new Duration(0);
-        maxTimeConnected = new Duration(0);
+        timeConnected = 0;
+        maxTimeConnected = 0;
         nicknames = new HashMap<String,Integer>();
         connections=1;
         timeOutCounter=0;
@@ -54,7 +55,7 @@ public class Client{
     /**
      * @return the cumulative connection time
      */
-    public Duration getTime(){
+    public int getTime(){
         return timeConnected;
     }
     
@@ -103,7 +104,7 @@ public class Client{
      * @param when the Instant when the client joined
      * @param nickname
      */
-    public void joined(Instant when, String nickname){
+    public void joined(int when, String nickname){
         if(!isConnected){
             connections++;
             lastJoined = when;
@@ -111,7 +112,7 @@ public class Client{
         }
         else{
             aditionalConnections++;
-            if(debug){
+            if(DEBUG){
                 System.out.println("creted an adition connection for id:" + id + " currently @" + aditionalConnections);
             }
         }
@@ -121,16 +122,16 @@ public class Client{
     /**
      * Disconnects the client from the server
      */
-    public void disconnected(Instant when, String nickname){
+    public void disconnected(int when, String nickname){
         if(isConnected){
             if(aditionalConnections==0){
                 try{
-                    Duration dur = new Duration(lastJoined.getMillis(), when.getMillis());
-                    if(dur.compareTo(maxTimeConnected)>0){
+                    int dur = when - lastJoined;
+                    if(dur > maxTimeConnected){
                         maxTimeConnected = dur;
                     }
                     isConnected = false;
-                    timeConnected = timeConnected.plus(dur);
+                    timeConnected += dur;
                 }
                 catch(Exception e){
                     System.out.println("Something went whrong disconectiong " + nickname + " @time:" + when);
@@ -138,7 +139,7 @@ public class Client{
             }
             else{
                 aditionalConnections--;
-                if(debug){
+                if(DEBUG){
                     System.out.println("decremented adition connection for id:" + id + " currently @" + aditionalConnections);
                 }
             }
@@ -160,8 +161,8 @@ public class Client{
      * @return a String with the client info (separeted by \t)
      */
     public String toString(){
-        return id + "\t" + getNickname() + "\t" + timeConnected.getStandardMinutes() + 
-            "\t" + maxTimeConnected.getStandardMinutes() + "\t" + connections + "\t" +timeOutCounter;  
+        return id + "\t" + getNickname() + "\t" + timeConnected + 
+            "\t" + maxTimeConnected + "\t" + connections + "\t" +timeOutCounter;  
     }
     
     /**
@@ -170,7 +171,7 @@ public class Client{
      */
     public void print(){
         System.out.printf("%-4d| %-30s| %-11d| %-6d| %d\n", 
-            id, getNickname(), timeConnected.getStandardMinutes(),
-            maxTimeConnected.getStandardMinutes(), connections);  
+            id, getNickname(), timeConnected,
+            maxTimeConnected, connections);  
     }
 }
