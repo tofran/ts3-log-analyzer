@@ -1,8 +1,9 @@
 import java.util.Scanner;
 import java.io.File;
-import org.joda.time.DateTime;
-import org.joda.time.Instant;
-import org.joda.time.format.DateTimeFormat;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 
 /**
  * Reads TS3 log files and adds them to the database
@@ -122,12 +123,18 @@ public class FileReader{
      * @param the String with the date/time
      * @return DateTime the joda time of the provided time
      */
-    private static Instant getTime(String line){
+    private static long getTime(String line){
         String text = line;
         text = text.substring(0,19);
-        Instant dt = null;
+        long dt = -1;
         try{
-             dt = Instant.parse(text, DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss"));
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+    
+            String inputString = text;
+    
+            Date date = sdf.parse("1970-01-01 " + inputString);
+            dt = date.getTime();  
         }
         catch(Exception e){
             System.out.println("id:" + getId(line) + 
@@ -142,7 +149,7 @@ public class FileReader{
      */
     private static void clientJoined(String line){
         int id = getId(line);
-        Instant date = getTime(line);
+        long date = getTime(line);
         String nickname = getNickname(line);
         if(DB.getPos(id)==-1){
             DB.add(new Client(id, nickname));

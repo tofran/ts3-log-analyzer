@@ -13,8 +13,7 @@ public class Client{
     private HashMap<String,Integer> nicknames;
     private int id, connections, timeOutCounter, aditionalConnections;
     private boolean isConnected;
-    private int timeConnected, maxTimeConnected;
-    private int lastJoined;
+    private long timeConnected, maxTimeConnected, lastJoined;
 
     /**
      * Construcs a client
@@ -55,7 +54,7 @@ public class Client{
     /**
      * @return the cumulative connection time
      */
-    public int getTime(){
+    public long  getTime(){
         return timeConnected;
     }
     
@@ -104,7 +103,7 @@ public class Client{
      * @param when the Instant when the client joined
      * @param nickname
      */
-    public void joined(int when, String nickname){
+    public void joined(long when, String nickname){
         if(!isConnected){
             connections++;
             lastJoined = when;
@@ -122,11 +121,11 @@ public class Client{
     /**
      * Disconnects the client from the server
      */
-    public void disconnected(int when, String nickname){
+    public void disconnected(long when, String nickname, boolean timedOut){
         if(isConnected){
             if(aditionalConnections==0){
                 try{
-                    int dur = when - lastJoined;
+                    long dur = when - lastJoined;
                     if(dur > maxTimeConnected){
                         maxTimeConnected = dur;
                     }
@@ -144,6 +143,9 @@ public class Client{
                 }
             }
             usedNickname(nickname);
+            if(timedOut){
+                timedOut();
+            }
         }
         else{
              System.out.println("Client id:" + id + " cant disconnect on " + when + ": CLIENT NOT CONNECTED");
@@ -169,9 +171,7 @@ public class Client{
      * Prints the client info to the console with the following format:
      * ID  | Nickname |  number of connections | Sum time of all connections | Longest connection
      */
-    public void print(){
-        System.out.printf("%-4d| %-30s| %-11d| %-6d| %d\n", 
-            id, getNickname(), timeConnected,
-            maxTimeConnected, connections);  
+    public String toStringFormatted(){
+        return String.format("%-4d| %-30s| %-11d| %-6d| %d\n", id, getNickname(), timeConnected, maxTimeConnected, connections);
     }
 }

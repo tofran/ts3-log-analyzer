@@ -47,7 +47,12 @@ public class FileWriter{
      * Closes the file
      */
     private static void closeFile(){
-        fmt.close();
+        try{
+            fmt.close();
+        }
+        catch(Exception e){
+            System.out.println();
+        }
     }
     
     /**

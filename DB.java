@@ -23,7 +23,7 @@ public class DB{
      * @param who the id of the client
      * @param when the time of the connection
      */
-    public static void connect(int who, Instant when, String nickname){
+    public static void connect(int who, long when, String nickname){
         clients.get(getPos(who)).joined(when, nickname);
     }
     
@@ -34,13 +34,10 @@ public class DB{
      * @param when the theme that of the client DC
      * @param didClientTimedOut true/false, if the client diconnected by timming out
      */
-    public static void disconnect(int id, String nickname, Instant when, boolean didClientTimedOut){
+    public static void disconnect(int id, String nickname, long when, boolean timedOut){
         int pos = getPos(id);
         if(pos!=-1){
-            clients.get(pos).disconnected(when, nickname);
-            if(didClientTimedOut){
-                clients.get(pos).timedOut();
-            }
+            clients.get(pos).disconnected(when, nickname, timedOut);
         }
         else{
              System.out.println("Client id:" + id + " cant disconnect: CLIENT NOT FOUND");
@@ -82,14 +79,14 @@ public class DB{
     public static void printAllFormatted(){
         System.out.println("ID  | Nickname                      |SumTime(min)|Longest|Count");
         for(Client each : clients){
-            each.print();
+            System.out.println(each.toStringFormatted());
         }
     }
     
     /**
      * Disconnects all clients
      */
-    public static void disconnectAll(Instant when){
+    public static void disconnectAll(long when){
         for(Client each : clients){
             if(each.isConnected()){
                 disconnect(each.getId(), null, when, false);
