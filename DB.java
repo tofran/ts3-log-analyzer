@@ -7,6 +7,7 @@ import org.joda.time.Instant;
  */
 public class DB{
     private static ArrayList<Client> clients = new ArrayList<Client>();
+    public static final boolean DEBUG = true;
     
     /**
      * Adds a client to the database / list
@@ -14,6 +15,9 @@ public class DB{
      * @param clientToAdd the client to add
      */
     public static void add(Client clientToAdd){
+        if(DEBUG){
+            System.out.printf("Added: " + clientToAdd + "\n");
+        }
         clients.add(clientToAdd);
     }
     
@@ -24,6 +28,9 @@ public class DB{
      * @param when the time of the connection
      */
     public static void connect(int who, long when, String nickname){
+        if(getPos(who)==-1){
+            add(new Client(who, nickname));
+        }
         clients.get(getPos(who)).joined(when, nickname);
     }
     
@@ -77,7 +84,7 @@ public class DB{
      * Prints every client
      */
     public static void printAllFormatted(){
-        System.out.println("ID  | Nickname                      |SumTime(min)|Longest|Count");
+        System.out.println("ID   | Nickname      | SumTime(sec) | Longest  | Count");
         for(Client each : clients){
             System.out.println(each.toStringFormatted());
         }
@@ -99,5 +106,12 @@ public class DB{
      */
     public static void clear(){
         clients.clear();
+    }
+    
+    /**
+     * Chack if db is clear
+     */
+    public static boolean hasData(){
+        return !clients.isEmpty();
     }
 }

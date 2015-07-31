@@ -12,7 +12,7 @@ import java.util.TimeZone;
  */
 public class FileReader{
     private static Scanner input;
-    public static final boolean debug = false;
+    public static final boolean DEBUG = true;
     private static int totalLines = 0;
 
     /**
@@ -80,8 +80,8 @@ public class FileReader{
         int lineNumber = 0;
         String line = "";
         while(input.hasNextLine()) {
+            lineNumber++; 
             try{
-                lineNumber++; 
                 line = input.nextLine();
                 if(line.indexOf("| client connected")!=-1){ 
                     clientJoined(line);
@@ -95,14 +95,14 @@ public class FileReader{
                 input.close();
                 System.exit(1);
             }
-            if(debug){
+            if(DEBUG){
                 System.out.println("@line:" + lineNumber);
             }
         }
         DB.disconnectAll(getTime(line));
         totalLines += lineNumber;
-        if(debug){
-                System.out.printf(" processed " + lineNumber + " lines\n");
+        if(DEBUG){
+            System.out.printf(" processed " + lineNumber + " lines\n");
         }
     }
         
@@ -123,23 +123,18 @@ public class FileReader{
      * @param the String with the date/time
      * @return DateTime the joda time of the provided time
      */
-    private static long getTime(String line){
-        String text = line;
-        text = text.substring(0,19);
+    public static long getTime(String line){
+        String stringDate = line.substring(0,19);
         long dt = -1;
         try{
             SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
-    
-            String inputString = text;
-    
-            Date date = sdf.parse("1970-01-01 " + inputString);
+   
+            //System.out.println(stringDate);
+            Date date = sdf.parse(stringDate);
             dt = date.getTime();  
         }
         catch(Exception e){
-            System.out.println("id:" + getId(line) + 
-                " Tried to join in a in a local time does not exist: " + line.substring(0,19) +
-                " joda.time.IllegalInstantException Daylight saving time?");
+            System.out.println("Error reading time: '" + stringDate + "' Client id:" + getId(line));
         }
         return dt;
     }
@@ -151,9 +146,6 @@ public class FileReader{
         int id = getId(line);
         long date = getTime(line);
         String nickname = getNickname(line);
-        if(DB.getPos(id)==-1){
-            DB.add(new Client(id, nickname));
-        }
         DB.connect(id, date, nickname);
     }
     
@@ -170,6 +162,8 @@ public class FileReader{
     
     /**
      * @return the total lines analyzed
+     * 
+     * @todo fix (this is a bad design)
      */
     public static int getAndResetTotalLines(){
         int lines = totalLines;

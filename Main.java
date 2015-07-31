@@ -20,6 +20,7 @@ public class Main{
         String input;
         
         while(!exit){
+            hasData = DB.hasData();
             System.out.printf(help());
             input = sc.next().trim();
             if(hasData || (!hasData && (input.equals("1") || input.equals("5")))){
@@ -64,7 +65,7 @@ public class Main{
             st += "\n 1 - Read another file/folder (combine data);" +
                 "\n 2 - Save database to file;" + 
                 "\n 3 - Print results to screen;" +
-                "\n 5 - Flush database;";        
+                "\n 4 - Flush database;";        
         }
         return st + "\n 5 - exit\n:";
     }
@@ -77,7 +78,6 @@ public class Main{
         String input = sc.next().replace("\\", "\\\\");
         FileReader.execute(input);
         System.out.println(FileReader.getAndResetTotalLines() + " lines analized!");
-        hasData = true;
     }
     
     /**
