@@ -1,5 +1,5 @@
 import java.util.ArrayList;
-import org.joda.time.Instant;
+
 /**
  * A static database of all clients
  * 
@@ -77,6 +77,14 @@ public class DB{
         for(Client each : clients){
             st += each.toString() + "\n";
         }
+        return st;
+    }
+    
+    /**
+     * @return all the info about the clients on the DB in JSON format with extensive info
+     */
+    public static String toJson(){
+        String st = "";
         return st;
     }
     

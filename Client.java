@@ -1,6 +1,5 @@
-import org.joda.time.Duration;
-import org.joda.time.Instant;
 import java.util.HashMap;
+import java.util.ArrayList;
 
 /**
  * This class defines a User/Client
@@ -34,11 +33,11 @@ public class Client{
     }
     
     /**
-     * Removes TS3 ascii art in the format: "(&#...;)|(&#....;)|(&#.....;)" and trims adjacebt spaces
+     * Removes TS3 utf art in the format: "(&#...;)|(&#....;)|(&#.....;)" and trims adjacebt spaces
      * Ex: "&#0000; &#995; NAME_ &#90695; &#A778;"
      * will return "NAME_"
      */
-    private String removeAsciiArt(String text){
+    private String removeTextArt(String text){
         text = text.trim().replaceAll("(&#...;)|(&#....;)|(&#.....;)", "").trim();
         return text;
     }
@@ -79,7 +78,7 @@ public class Client{
      */
     private void usedNickname(String name){
         if(name!=null && !name.equals("")){
-            name = removeAsciiArt(name);
+            name = removeTextArt(name);
             if(nicknames.containsKey(name)){
                 nicknames.put(name, (nicknames.get(name)+1));
             }
@@ -168,7 +167,7 @@ public class Client{
      * @return a String with the client info (separeted by \t)
      */
     public String toString(){
-        return id + ";" + getNickname() + ";" + timeConnected + ";" + maxTimeConnected + ";" + connections + ";" +timeOutCounter;  
+        return id + "\t" + getNickname() + "\t" + timeConnected + "\t" + maxTimeConnected + "\t" + connections + "\t" +timeOutCounter;  
     }
     
     /**

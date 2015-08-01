@@ -1,4 +1,5 @@
 import java.util.Scanner;
+
 /**
  * This is the main interface for the TS log analyzer
  * 
@@ -24,18 +25,18 @@ public class Main{
             System.out.printf(help());
             input = sc.next().trim();
             if(hasData || (!hasData && (input.equals("1") || input.equals("5")))){
-                switch(input){                
+                switch(input){  
+                    case "1":
+                        readFile();
+                        break; 
+                        
+                    case "2":
+                        saveToFile();
+                        break; 
+                        
                     case "3":
                         DB.printAllFormatted();
                         break;
-                    
-                    case "2":
-                        saveToFile();
-                        break;
-                        
-                    case "1":
-                        readFile();
-                        break;                     
                     
                     case "4":
                         DB.clear();
@@ -90,7 +91,23 @@ public class Main{
             System.out.printf("File already there. File path: ");
             input = sc.next().replace("\\", "\\\\");
         }
-        new FileWriter(input, DB.toStringAll());
-        System.out.println("Success");
+
+        System.out.println("1 - Save as tab separated data (for importing w/ excel, etc)\n2 - Save as extensive JSON file");
+        switch(sc.next().trim()){
+            case "1":
+                new FileWriter(input, DB.toStringAll());
+                System.out.println("Success!"); 
+                break;
+                
+            case "2":
+                new FileWriter(input, DB.toJson());
+                System.out.println("NOT IMPLEMENTED YET"); 
+                break;
+                
+            default:
+                System.out.printf("Cancelled");
+                break;
+        }
+        
     }
 }
