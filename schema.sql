@@ -1,0 +1,38 @@
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE user (
+	id	INTEGER NOT NULL,
+	main_nickname	INTEGER NOT NULL,
+	connection_n	INTEGER NOT NULL DEFAULT 0,
+	connection_time	INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY(id)
+);
+
+CREATE TABLE connection (
+	id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	user	INTEGER NOT NULL,
+	connected	INTEGER NOT NULL,
+	disconnected	INTEGER NOT NULL,
+	reasonmsg	INTEGER NOT NULL,
+	nickname	TEXT NOT NULL,
+	server	INTEGER NOT NULL CHECK(1),
+	ip	TEXT NOT NULL,
+	log_id	INTEGER NOT NULL,
+	FOREIGN KEY(user) REFERENCES user(id),
+	FOREIGN KEY(log_id) REFERENCES log(id)
+);
+
+CREATE TABLE merged_client (
+	u1	INTEGER NOT NULL,
+	u2	INTEGER NOT NULL,
+	PRIMARY KEY(u1,u2),
+	FOREIGN KEY(u1) REFERENCES user(id),
+	FOREIGN KEY(u2) REFERENCES user(id)
+);
+
+CREATE TABLE log (
+	id	INTEGER NOT NULL,
+	name	TEXT NOT NULL,
+	date	BLOB NOT NULL,
+	PRIMARY KEY(id,name)
+);
