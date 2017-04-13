@@ -1,4 +1,4 @@
-#py files
+#python bytecode files
 *.py[co]
 
 #logs
@@ -6,3 +6,6 @@
 
 #output data
 *.json
+
+#databse files
+*.db
