@@ -14,12 +14,19 @@ CREATE TABLE connection (
 	connected	INTEGER NOT NULL,
 	disconnected	INTEGER NOT NULL,
 	reasonmsg	INTEGER NOT NULL,
-	nickname	TEXT NOT NULL,
-	server	INTEGER NOT NULL CHECK(1),
+	server	INTEGER NOT NULL DEFAULT 0,
 	ip	TEXT NOT NULL,
 	log_id	INTEGER NOT NULL,
 	FOREIGN KEY(user) REFERENCES user(id),
 	FOREIGN KEY(log_id) REFERENCES log(id)
+);
+
+CREATE TABLE nickname (
+	user	INTEGER NOT NULL,
+	nickname	TEXT NOT NULL,
+	count	INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (user, nickname)
+	FOREIGN KEY(user) REFERENCES user(id),
 );
 
 CREATE TABLE merged_client (
