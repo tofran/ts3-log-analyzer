@@ -28,6 +28,7 @@ import glob
 from docopt import docopt
 
 db = None
+openConn = dict()
 
 def main():
     global db
@@ -73,7 +74,7 @@ def create_db(conection):
         conection.executescript(schema)
 
 def analyseFile(filepath):
-    print(filepath)
+    logging.info('Analyzing ' + filepath)
     lineN = 0
     lineArr = []
     connection = dict()
@@ -121,8 +122,8 @@ def slpitMessage(message):
 def getId(string):
     string.strip()
     if len(string) > 5 and string.startswith('(id:'):
-        return int(string[3:-1])
-    logging.debug("Couln't parse ID from: " + string + " !")
+        return int(string[4:-1])
+    logging.error("Couln't parse ID from: " + string + " !")
     return -1
 
 def getIp(string):
@@ -130,37 +131,55 @@ def getIp(string):
     pos = string.find(":")
     if pos != -1:
         return string[0:pos]
-    logging.debug("Couln't parse IP from: " + string + " !")
+    logging.error("Couln't parse IP from: " + string + " !")
     return "0.0.0.0"
 
 def getReason(string):
     string.strip()
     pos = string.find("=")
     if pos != -1:
-        return string[pos:]
-    logging.debug("Couln't get reason from: " + string + " !")
-    return "NONE"
+        return string[pos+1:]
+    logging.error("Couln't get reason from: " + string + " !")
+    return string
 
 def clientConnected(when, id, nickname, ip):
-    if not userExists():
-        logging.debug("New user " + id)
-    userExists(id)
-    print("cn")
+    #check if user exist
+    if not userExists(id):
+        #insert user
+        logging.debug("Creating new user " + str(id) + " (" + nickname + ")")
+        cur = db.cursor()
+        cur.execute("INSERT INTO user (id) VALUES (?)", [id])
+
+    #check if there is already a connecton opened
+    print (openConn)
+    if id in openConn:
+        openConn[id]['count'] += 1
+    else:
+        openConn[id] = {'connected': when, 'ip': ip, 'count': 1}
 
 def clientDisconnected(when, id, nickname, reason):
-    print("dc")
+    if not id in openConn:
+        logging.error("Client dictonnected without starting connecton")
+        return False
+
+    if openConn[id]['count'] > 1:
+        openConn[id]['count'] -= 1
+    else:
+        cur = db.cursor()
+        cur.execute("INSERT INTO connection (user, connected, disconnected, reason, ip) " + \
+                    "VALUES (?, ?, ?, ?, ?)", \
+                    [id, openConn[id]['connected'], when, reason, openConn[id]['ip']])
 
 def usedNickname(id, nickname):
     cur = db.cursor()
-    cur.execute("INSERT INTO nickname VALUES (?,?)", [id])
+    cur.execute("UPDATE nickname SET count = count + 1 WHERE user = ? AND nickname = ?", [id, nickname])
 
-def userExists():
+def userExists(id):
     cur = db.cursor()
     cur.execute("SELECT id FROM user WHERE user.id = ?", [id])
     if cur.fetchone() is not None:
         return True
     return False
-
 
 if __name__ == "__main__":
     main()
