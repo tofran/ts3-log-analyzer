@@ -73,7 +73,7 @@ def main():
 
 def analyseFile(filepath):
     logging.info("Analyzing " + filepath)
-    insertLog(filepath)
+    logId = insertLog(filepath)
     lineN = 0
     lineArr = []
     connection = dict()
@@ -92,7 +92,7 @@ def analyseFile(filepath):
                         if message[1] == 'connected':
                             clientConnected(lineArr[0], getId(message[3]), message[2], getIp(message[5]))
                         elif message[1] == 'disconnected':
-                            clientDisconnected(lineArr[0], getId(message[3]), message[2], getReason(message[5]))
+                            clientDisconnected(lineArr[0], getId(message[3]), message[2], getReason(message[5]), logId)
 
 #################
 #PARSING
@@ -157,17 +157,17 @@ def clientConnected(when, id, nickname, ip):
     else:
         openConn[id] = {'connected': when, 'ip': ip, 'count': 1}
 
-def clientDisconnected(when, id, nickname, reason):
+def clientDisconnected(when, id, nickname, reason, logId):
     if not id in openConn:
         logging.error("Client dictonnected without starting connecton!")
         return False
 
     if openConn[id]['count'] > 1:
-        logging.debug("Closed 1 connection for " + str(id) + ", ramaining: " + str(openConn[id]['count']))
+        logging.debug("Closed 1 connection for client " + str(id) + ", ramaining: " + str(openConn[id]['count']))
         openConn[id]['count'] -= 1
     else:
         logging.debug('Client ' + str(id) + ' disconnected')
-        insertConnection(id, openConn[id]['connected'], when, reason, openConn[id]['ip'])
+        insertConnection(id, openConn[id]['connected'], when, reason, openConn[id]['ip'], logId)
 
     nicknameUsed(id, nickname)
     return True
@@ -180,11 +180,11 @@ def create_db(conection):
         cur = conection.cursor()
         conection.executescript(schema)
 
-def insertConnection(user, connected, disconnected, reason, ip):
+def insertConnection(user, connected, disconnected, reason, ip, log):
     cur = db.cursor()
-    cur.execute("INSERT INTO connection (user, connected, disconnected, reason, ip) " + \
-                "VALUES (?, ?, ?, ?, ?)", \
-                [user, connected, disconnected, reason, "0.0.0.0" if hideIp else ip] \
+    cur.execute("INSERT INTO connection (user, connected, disconnected, reason, ip, log) " + \
+                "VALUES (?, ?, ?, ?, ?, ?)", \
+                [user, connected, disconnected, reason, "0.0.0.0" if hideIp else ip, log] \
                 )
 
 def insertUser(id):
@@ -205,9 +205,14 @@ def nicknameUsed(id, nickname):
 
 def insertLog(filename):
     cur = db.cursor()
-    cur.execute("INSERT INTO log (name) VALUES (?)", [filename])
-    print(cur.lastrowid)
+    size = os.path.getsize(filename)
+    cur.execute("INSERT INTO log (name, size) VALUES (?, ?)", [filename, size])
     return cur.lastrowid
+
+def checkLog(filename):
+    cur = db.cursor()
+    cur.execute("SELECT id, lines FROM log WHERE log.name = ?", [filename])
+    return cur.fetchone()
 
 if __name__ == '__main__':
     main()
