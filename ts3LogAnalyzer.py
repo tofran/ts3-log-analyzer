@@ -72,27 +72,46 @@ def main():
     db.close()
 
 def analyseFile(filepath):
-    logging.info("Analyzing " + filepath)
-    logId = insertLog(filepath)
-    lineN = 0
-    lineArr = []
-    connection = dict()
-    with open(filepath, 'r') as f:
-        for line in f:
-            if len(line.strip()) > 1:
-                lineN += 1
-                logging.debug('line' + str(lineN))
-                lineArr = line.strip().split('|')
-                message = slpitMessage(lineArr[4])
-                #time = datetime.datetime.strptime(lineArr[0], '%Y-%m-%d %H:%M:%S.%f')
+    savedLog = checkLog(filepath)
 
-                if (lineArr[2] == 'VirtualServerBase' and
-                    len(message) >= 4 and
-                    message[0] == 'client'):
-                        if message[1] == 'connected':
-                            clientConnected(lineArr[0], getId(message[3]), message[2], getIp(message[5]))
-                        elif message[1] == 'disconnected':
-                            clientDisconnected(lineArr[0], getId(message[3]), message[2], getReason(message[5]), logId)
+    #check if logfile already analyzed
+    size = os.path.getsize(filepath)
+    if savedLog and size <= savedLog[2]:
+
+        logging.info("Skipping " + filepath)
+        return
+    else:
+        lineN = 0
+        lineArr = []
+
+        if savedLog:
+            logId = savedLog[0]
+            deleteConnections(logId)
+        else:
+            logId = insertLog(filepath)
+
+        logging.info("Analyzing log " + str(logId) + ": " + filepath)
+
+        with open(filepath, 'r') as f:
+            for line in f:
+                lineN += 1
+                if len(line.strip()) > 0:
+                    logging.debug("Line " + str(lineN))
+                    lineArr = line.strip().split('|')
+                    message = slpitMessage(lineArr[4])
+                    #time = datetime.datetime.strptime(lineArr[0], '%Y-%m-%d %H:%M:%S.%f')
+
+                    if (lineArr[2] == 'VirtualServerBase' and
+                        len(message) >= 4 and
+                        message[0] == 'client'):
+                            if message[1] == 'connected':
+                                clientConnected(lineArr[0], getId(message[3]), message[2], getIp(message[5]))
+                            elif message[1] == 'disconnected':
+                                clientDisconnected(lineArr[0], getId(message[3]), message[2], getReason(message[5]), logId)
+
+            updateLog(logId, lineN, size)
+            logging.debug("Analyzed " + str(lineN) + " lines from " + str(logId) + ": " + filepath)
+
 
 #################
 #PARSING
@@ -159,7 +178,7 @@ def clientConnected(when, id, nickname, ip):
 
 def clientDisconnected(when, id, nickname, reason, logId):
     if not id in openConn:
-        logging.error("Client dictonnected without starting connecton!")
+        logging.error("Client dictonnected without connecting!")
         return False
 
     if openConn[id]['count'] > 1:
@@ -187,6 +206,10 @@ def insertConnection(user, connected, disconnected, reason, ip, log):
                 [user, connected, disconnected, reason, "0.0.0.0" if hideIp else ip, log] \
                 )
 
+def deleteConnections(logId):
+    cur = db.cursor()
+    cur.execute("DELETE FROM connection WHERE log = ?", [logId])
+
 def insertUser(id):
     logging.debug("Creating new user " + str(id))
     cur = db.cursor()
@@ -209,9 +232,16 @@ def insertLog(filename):
     cur.execute("INSERT INTO log (name, size) VALUES (?, ?)", [filename, size])
     return cur.lastrowid
 
+def updateLog(id, lines, size = None):
+    cur = db.cursor()
+    if size:
+        cur.execute("UPDATE log SET lines = ?, size = ? WHERE id = ?", [lines, size, id])
+    else:
+        cur.execute("UPDATE log SET lines = ? WHERE id = ?", [lines, id])
+
 def checkLog(filename):
     cur = db.cursor()
-    cur.execute("SELECT id, lines FROM log WHERE log.name = ?", [filename])
+    cur.execute("SELECT id, lines, size FROM log WHERE log.name = ?", [filename])
     return cur.fetchone()
 
 if __name__ == '__main__':
