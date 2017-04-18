@@ -111,7 +111,6 @@ def analyseFile(filepath):
                     if (lineArr[2] == 'VirtualServerBase' and
                         len(message) >= 4 and
                         message[0] == 'client'):
-
                             if message[1] == 'connected':
                                 clientConnected(time, getId(message[3]), getIp(message[5]), message[2])
                             elif message[1] == 'disconnected':
