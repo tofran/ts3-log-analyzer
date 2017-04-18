@@ -24,10 +24,12 @@ __license__ = 'GNU GPLv3'
 
 import os
 import sys
+import ntpath
 import logging
 import sqlite3
 import glob
 from docopt import docopt
+
 
 db = None
 hideIp = False
@@ -37,7 +39,6 @@ def main():
     global db, HIDEIP
     arguments = docopt(__doc__, version='2.0')
     logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.DEBUG)
-    logging.debug("arguments: " + str(arguments))
 
     hideIp = arguments['--hide-ip']
     #if no databse parameter, use databse.db
@@ -52,7 +53,7 @@ def main():
         create_db(db)
         logging.info(database + ' created!')
     elif not arguments['--database']:
-            logging.warning("-d not specified, using " + database)
+            logging.warning("-d not specified, using existing " + database)
 
     #log files
     path = arguments['<log>']
@@ -72,17 +73,16 @@ def main():
     db.close()
 
 def analyseFile(filepath):
-    savedLog = checkLog(filepath)
-
     #check if logfile already analyzed
+    savedLog = checkLog(filepath)
     size = os.path.getsize(filepath)
     if savedLog and size <= savedLog[2]:
-
         logging.info("Skipping " + filepath)
         return
     else:
         lineN = 0
         lineArr = []
+        time = None
 
         if savedLog:
             logId = savedLog[0]
@@ -104,13 +104,23 @@ def analyseFile(filepath):
                     if (lineArr[2] == 'VirtualServerBase' and
                         len(message) >= 4 and
                         message[0] == 'client'):
+                            time = lineArr[0]
                             if message[1] == 'connected':
-                                clientConnected(lineArr[0], getId(message[3]), message[2], getIp(message[5]))
+                                clientConnected(time, getId(message[3]), getIp(message[5]), message[2])
                             elif message[1] == 'disconnected':
-                                clientDisconnected(lineArr[0], getId(message[3]), message[2], getReason(message[5]), logId)
+                                clientDisconnected(time, getId(message[3]), getReason(message[5]), logId, message[2])
 
-            updateLog(logId, lineN, size)
-            logging.debug("Analyzed " + str(lineN) + " lines from " + str(logId) + ": " + filepath)
+            #end for
+        #end with
+
+        updateLog(logId, lineN, size)
+        logging.debug("Analyzed " + str(lineN) + " lines from " + str(logId) + ": " + filepath)
+
+        #close remaining opened connections
+        if len(openConn) > 0:
+            logging.debug("Closing " + str(len(openConn)) + "unclosed connections ")
+            for id in openConn:
+                insertConnection(id, openConn[id]['connected'], time, "Dropped at the end of the log", openConn[id]['ip'], logId)
 
 
 #################
@@ -163,20 +173,22 @@ def getReason(string):
 
 #################
 #ACTIONS
-def clientConnected(when, id, nickname, ip):
+def clientConnected(when, id, ip, nickname = None):
     logging.debug("ClientConnected(" + when + ", " + str(id) + ", " + nickname + ip)
     #check if user exist
     if not userExists(id):
         insertUser(id)
 
-    nicknameUsed(id, nickname)
     #check if there is already a connecton opened
     if id in openConn:
         openConn[id]['count'] += 1
     else:
         openConn[id] = {'connected': when, 'ip': ip, 'count': 1}
 
-def clientDisconnected(when, id, nickname, reason, logId):
+    if nickname:
+        nicknameUsed(id, nickname)
+
+def clientDisconnected(when, id, reason, logId, nickname = None):
     if not id in openConn:
         logging.error("Client dictonnected without connecting!")
         return False
@@ -188,7 +200,8 @@ def clientDisconnected(when, id, nickname, reason, logId):
         logging.debug('Client ' + str(id) + ' disconnected')
         insertConnection(id, openConn[id]['connected'], when, reason, openConn[id]['ip'], logId)
 
-    nicknameUsed(id, nickname)
+    if nickname:
+        nicknameUsed(id, nickname)
     return True
 
 #################
@@ -201,10 +214,11 @@ def create_db(conection):
 
 def insertConnection(user, connected, disconnected, reason, ip, log):
     cur = db.cursor()
-    cur.execute("INSERT INTO connection (user, connected, disconnected, reason, ip, log) " + \
-                "VALUES (?, ?, ?, ?, ?, ?)", \
-                [user, connected, disconnected, reason, "0.0.0.0" if hideIp else ip, log] \
-                )
+    cur.execute( \
+        "INSERT INTO connection (user, connected, disconnected, reason, ip, log) " + \
+        "VALUES (?, ?, ?, ?, ?, ?)", \
+        [user, connected, disconnected, reason, "0.0.0.0" if hideIp else ip, log] \
+        )
 
 def deleteConnections(logId):
     cur = db.cursor()
@@ -224,12 +238,16 @@ def userExists(id):
 
 def nicknameUsed(id, nickname):
     cur = db.cursor()
+    cur.execute("INSERT OR IGNORE INTO nickname (user, nickname, count) VALUES (?, ?, 0)", [id, nickname])
+    cur = db.cursor()
     cur.execute("UPDATE nickname SET count = count + 1 WHERE user = ? AND nickname = ?", [id, nickname])
 
-def insertLog(filename):
+def insertLog(filepath):
     cur = db.cursor()
-    size = os.path.getsize(filename)
-    cur.execute("INSERT INTO log (name, size) VALUES (?, ?)", [filename, size])
+    cur.execute( \
+        "INSERT INTO log (name, size) VALUES (?, ?)", \
+        [ntpath.basename(filepath), os.path.getsize(filepath)] \
+        )
     return cur.lastrowid
 
 def updateLog(id, lines, size = None):
@@ -239,9 +257,9 @@ def updateLog(id, lines, size = None):
     else:
         cur.execute("UPDATE log SET lines = ? WHERE id = ?", [lines, id])
 
-def checkLog(filename):
+def checkLog(filepath):
     cur = db.cursor()
-    cur.execute("SELECT id, lines, size FROM log WHERE log.name = ?", [filename])
+    cur.execute("SELECT id, lines, size FROM log WHERE log.name = ?", [ntpath.basename(filepath)])
     return cur.fetchone()
 
 if __name__ == '__main__':
