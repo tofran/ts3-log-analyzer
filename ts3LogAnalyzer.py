@@ -3,15 +3,19 @@
 ts3LogAnalyzer.py
 
 Usage:
-    ts3LogAnalyzer.py <log> [-d <path>] [--hide-ip]
+    ts3LogAnalyzer.py <log>
+    ts3LogAnalyzer.py <log> [-d <databse>]
+    ts3LogAnalyzer.py <log> [-d <databse>] [--hide-ip] [--debug] [--output-logging]
     ts3LogAnalyzer.py -h | --help
     ts3LogAnalyzer.py -v | --version
 
 Options:
-    -d --database <path>    Database to use or create (database.db used by default)
-    --hide-ip               Don't save ips
-    -h --help               Show this screen
-    -v --version            Show version
+    -d --database <databse>     Database to use or create (database.db used by default)
+    --hide-ip                   Don't save ips
+    --debug                     Output debug information
+    --output-logging            Output logging from THIS program to ts3LogAnalyzer.log
+    -h --help                   Show this screen
+    -v --version                Show version
 """
 
 __author__ = 'ToFran'
@@ -38,7 +42,11 @@ openConn = dict()
 def main():
     global db, HIDEIP
     arguments = docopt(__doc__, version='2.0')
-    logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.DEBUG)
+    logging.basicConfig( \
+            format = "%(levelname)s: %(message)s", \
+            level = logging.DEBUG if arguments['--debug'] else logging.INFO, \
+            filename = "ts3LogAnalyzer.log" if arguments['--output-logging'] else None \
+            )
 
     hideIp = arguments['--hide-ip']
     #if no databse parameter, use databse.db
@@ -59,7 +67,7 @@ def main():
     path = arguments['<log>']
     if os.path.isdir(path):
         logging.debug(path + " is a folder.")
-        for f in glob.glob('*.log'):
+        for f in glob.glob(arguments['<log>'] + '/*.log'):
             analyseFile(f)
     elif os.path.isfile(path):
         logging.debug(path + " is a file.")
@@ -113,14 +121,14 @@ def analyseFile(filepath):
             #end for
         #end with
 
-        updateLog(logId, lineN, size)
-        logging.debug("Analyzed " + str(lineN) + " lines from " + str(logId) + ": " + filepath)
-
         #close remaining opened connections
         if len(openConn) > 0:
-            logging.debug("Closing " + str(len(openConn)) + "unclosed connections ")
+            logging.debug("Closing " + str(len(openConn)) + " unclosed connections ")
             for id in openConn:
                 insertConnection(id, openConn[id]['connected'], time, "Dropped at the end of the log", openConn[id]['ip'], logId)
+
+        updateLog(logId, lineN, size)
+        logging.info("Analyzed " + str(lineN) + " lines from " + str(logId) + ": " + filepath)
 
 
 #################
@@ -152,7 +160,7 @@ def getId(string):
     string.strip()
     if len(string) > 5 and string.startswith("(id:"):
         return int(string[4:-1])
-    logging.error("Couln't parse ID from: " + string + " !")
+    logging.error("Couln't parse ID from: " + string)
     return -1
 
 def getIp(string):
@@ -160,15 +168,16 @@ def getIp(string):
     pos = string.find(':')
     if pos != -1:
         return string[0:pos]
-    logging.error("Couln't parse IP from: " + string + " !")
+    logging.error("Couln't parse IP from: " + string)
     return "0.0.0.0"
 
 def getReason(string):
+    #todo improve reason handeling
     string.strip()
     pos = string.find('=')
     if pos != -1:
         return string[pos+1:]
-    logging.error("Couln't get reason from: " + string + " !")
+    logging.warning("Couln't get reason from: " + string)
     return string
 
 #################
