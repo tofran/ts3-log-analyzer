@@ -4,7 +4,6 @@ ts3LogAnalyzer.py
 
 Usage:
     ts3LogAnalyzer.py <log>
-    ts3LogAnalyzer.py <log> [-d <databse>]
     ts3LogAnalyzer.py <log> [-d <databse>] [--hide-ip] [--debug] [--output-logging]
     ts3LogAnalyzer.py -h | --help
     ts3LogAnalyzer.py -v | --version
@@ -12,8 +11,8 @@ Usage:
 Options:
     -d --database <databse>     Database to use or create (database.db used by default)
     --hide-ip                   Don't save ips
-    --debug                     Output debug information
     --output-logging            Output logging from THIS program to ts3LogAnalyzer.log
+    --debug                     Output debug information
     -h --help                   Show this screen
     -v --version                Show version
 """
@@ -32,6 +31,7 @@ import ntpath
 import logging
 import sqlite3
 import glob
+from datetime import datetime
 from docopt import docopt
 
 
@@ -106,7 +106,7 @@ def analyseFile(filepath):
                     logging.debug("Line " + str(lineN))
                     lineArr = splitLine(line)
                     message = slpitMessage(lineArr[4])
-                    time = lineArr[0] #datetime.datetime.strptime(lineArr[0], '%Y-%m-%d %H:%M:%S.%f')
+                    time = lineArr[0]
 
                     if (lineArr[2] == 'VirtualServerBase' and
                         len(message) >= 4 and
@@ -163,21 +163,19 @@ def slpitMessage(message):
             if pos == -1:
                 pos = len(message)-1
 
-        arr.append(message[0:pos])
+        arr.append(message[0:pos].strip())
         message = message[pos+1:]
         pos = message.find(' ')
     logging.debug(":" + str(arr))
     return arr
 
 def getId(string):
-    string.strip()
     if len(string) > 5 and string.startswith("(id:"):
         return int(string[4:-1])
     logging.error("Couln't parse ID from: " + string)
     return -1
 
 def getIp(string):
-    string.strip()
     pos = string.find(':')
     if pos != -1:
         return string[0:pos]
@@ -186,11 +184,6 @@ def getIp(string):
 
 def getReason(string):
     #todo improve reason handeling
-    string.strip()
-    pos = string.find('=')
-    if pos != -1:
-        return string[pos+1:]
-    logging.warning("Couln't get reason from: " + string)
     return string
 
 #################
@@ -237,10 +230,11 @@ def create_db(conection):
 
 def insertConnection(user, connected, disconnected, reason, ip, log):
     cur = db.cursor()
+    duration = (datetime.strptime(disconnected, '%Y-%m-%d %H:%M:%S.%f') - datetime.strptime(connected, '%Y-%m-%d %H:%M:%S.%f')).seconds
     cur.execute( \
-        "INSERT INTO connection (user, connected, disconnected, reason, ip, log) " + \
-        "VALUES (?, ?, ?, ?, ?, ?)", \
-        [user, connected, disconnected, reason, "0.0.0.0" if hideIp else ip, log] \
+        "INSERT INTO connection (user, connected, disconnected, duration, reason, ip, log) " + \
+        "VALUES (?, ?, ?, ?, ?, ?, ?)", \
+        [user, connected, disconnected, duration, reason, "0.0.0.0" if hideIp else ip, log] \
         )
 
 def deleteConnections(logId):
