@@ -49,7 +49,6 @@ def main():
             )
 
     hideIp = arguments['--hide-ip']
-    #if no databse parameter, use databse.db
     database = 'database.db'
     if arguments['--database']:
         database = arguments['--database']
@@ -277,6 +276,26 @@ def updateLog(id, lines, size = None):
 def checkLog(filepath):
     cur = db.cursor()
     cur.execute("SELECT id, lines, size FROM log WHERE log.name = ?", [ntpath.basename(filepath)])
+    return cur.fetchone()
+
+def getMainNickname(user_id):
+    cur = db.cursor()
+    cur.execute("SELECT nickname, count FROM nickname WHERE user = ? ORDER BY nickname.count DESC LIMIT 1", [user_id])
+    return cur.fetchone()
+
+def getCumulativeTime(user_id):
+    cur = db.cursor()
+    cur.execute("SELECT * FROM connection WHERE user = ? GROUP BY user ORDER BY SUM(duration) DESC LIMIT 1", [user_id])
+    return cur.fetchone()
+
+def getlongestCnn(user_id):
+    cur = db.cursor()
+    cur.execute("SELECT id, connected, disconnected, SUM(duration) FROM connection WHERE user = ? GROUP BY user LIMIT 1", [user_id])
+    return cur.fetchone()
+
+def countCnn(user_id):
+    cur = db.cursor()
+    cur.execute("SELECT COUNT(connection) FROM connection WHERE user = ?", [user_id])
     return cur.fetchone()
 
 if __name__ == '__main__':
