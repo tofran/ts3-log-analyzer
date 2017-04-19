@@ -31,9 +31,10 @@ import ntpath
 import logging
 import sqlite3
 import glob
+import html
+import codecs
 from datetime import datetime
 from docopt import docopt
-
 
 db = None
 hideIp = False
@@ -41,12 +42,13 @@ openConn = dict()
 
 def main():
     global db, HIDEIP
+    sys.stdout = codecs.getwriter('utf8')(sys.stdout)
     arguments = docopt(__doc__, version='2.0')
     logging.basicConfig( \
             format = "%(levelname)s: %(message)s", \
             level = logging.DEBUG if arguments['--debug'] else logging.INFO, \
-            filename = "ts3LogAnalyzer.log" if arguments['--output-logging'] else None \
-            )
+            handlers = [logging.FileHandler( "ts3LogAnalyzer.log" if arguments['--output-logging'] else None, 'w', 'utf-8')] \
+        )
 
     hideIp = arguments['--hide-ip']
     database = 'database.db'
@@ -75,6 +77,7 @@ def main():
         logging.critical(path + " does not exist! Terminating...")
         sys.exit()
 
+    db.commit()
     db.close()
 
 def analyseFile(filepath):
@@ -125,7 +128,6 @@ def analyseFile(filepath):
                 insertConnection(id, openConn[id]['connected'], time, "Dropped at the end of the log", openConn[id]['ip'], logId)
 
         updateLog(logId, lineN, size)
-        db.commit()
         logging.info("Analyzed " + str(lineN) + " lines from " + str(logId) + ": " + filepath)
 
 
@@ -162,7 +164,7 @@ def slpitMessage(message):
             if pos == -1:
                 pos = len(message)-1
 
-        arr.append(message[0:pos].strip())
+        arr.append(html.unescape(message[0:pos].strip()))
         message = message[pos+1:]
         pos = message.find(' ')
     logging.debug(":" + str(arr))
