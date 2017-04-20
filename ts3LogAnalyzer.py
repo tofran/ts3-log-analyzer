@@ -47,7 +47,7 @@ def main():
     logging.basicConfig( \
             format = "%(levelname)s: %(message)s", \
             level = logging.DEBUG if arguments['--debug'] else logging.INFO, \
-            handlers = [logging.FileHandler( "ts3LogAnalyzer.log" if arguments['--output-logging'] else None, 'w', 'utf-8')] \
+            handlers = [logging.FileHandler( "ts3LogAnalyzer.log", 'w', 'utf-8')] if arguments['--output-logging'] else None \
         )
 
     hideIp = arguments['--hide-ip']
@@ -237,6 +237,7 @@ def insertConnection(user, connected, disconnected, reason, ip, log):
         "VALUES (?, ?, ?, ?, ?, ?, ?)", \
         [user, connected, disconnected, duration, reason, "0.0.0.0" if hideIp else ip, log] \
         )
+    return cur.lastrowid
 
 def deleteConnections(logId):
     cur = db.cursor()
@@ -254,11 +255,11 @@ def userExists(id):
         return True
     return False
 
-def nicknameUsed(id, nickname):
+def nicknameUsed(user_id, nickname):
     cur = db.cursor()
-    cur.execute("INSERT OR IGNORE INTO nickname (user, nickname, count) VALUES (?, ?, 0)", [id, nickname])
+    cur.execute("INSERT OR IGNORE INTO nickname (user, nickname, used) VALUES (?, ?, 0)", [user_id, nickname])
     cur = db.cursor()
-    cur.execute("UPDATE nickname SET count = count + 1 WHERE user = ? AND nickname = ?", [id, nickname])
+    cur.execute("UPDATE nickname SET used = used + 1 WHERE user = ? AND nickname = ?", [user_id, nickname])
 
 def insertLog(filepath, wSize = False):
     cur = db.cursor()
@@ -282,7 +283,7 @@ def checkLog(filepath):
 
 def getMainNickname(user_id):
     cur = db.cursor()
-    cur.execute("SELECT nickname, count FROM nickname WHERE user = ? ORDER BY nickname.count DESC LIMIT 1", [user_id])
+    cur.execute("SELECT nickname, used FROM nickname WHERE user = ? ORDER BY used DESC LIMIT 1", [user_id])
     return cur.fetchone()
 
 def getCumulativeTime(user_id):
