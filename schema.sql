@@ -1,6 +1,6 @@
 PRAGMA foreign_keys = ON;
 
-CREATE TABLE user (
+CREATE TABLE client (
 	id	INTEGER NOT NULL PRIMARY KEY,
 	connection_n	INTEGER NOT NULL DEFAULT 0,
 	cumulative_time	INTEGER NOT NULL DEFAULT 0,
@@ -9,7 +9,7 @@ CREATE TABLE user (
 
 CREATE TABLE connection (
 	id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-	user	INTEGER NOT NULL,
+	client	INTEGER NOT NULL,
 	connected	INTEGER NOT NULL,
 	disconnected	INTEGER NOT NULL,
 	reason	INTEGER NOT NULL,
@@ -17,24 +17,24 @@ CREATE TABLE connection (
 	server	INTEGER NOT NULL DEFAULT 0,
 	duration INTEGER NOT NULL DEFAULT 0,
 	log INTEGER NOT NULL,
-	FOREIGN KEY(user) REFERENCES user(id),
+	FOREIGN KEY(client) REFERENCES client(id),
 	FOREIGN KEY(log) REFERENCES log(id)
 );
 
 CREATE TABLE nickname (
-	user	INTEGER NOT NULL,
+	client	INTEGER NOT NULL,
 	nickname	TEXT NOT NULL,
 	used	INTEGER NOT NULL DEFAULT 0,
-	PRIMARY KEY(user, nickname),
-	FOREIGN KEY(user) REFERENCES user(id)
+	PRIMARY KEY(client, nickname),
+	FOREIGN KEY(client) REFERENCES client(id)
 );
 
 CREATE TABLE merged (
 	u1	INTEGER NOT NULL,
 	u2	INTEGER NOT NULL,
 	PRIMARY KEY(u1,u2),
-	FOREIGN KEY(u1) REFERENCES user(id),
-	FOREIGN KEY(u2) REFERENCES user(id)
+	FOREIGN KEY(u1) REFERENCES client(id),
+	FOREIGN KEY(u2) REFERENCES client(id)
 );
 
 CREATE TABLE log (

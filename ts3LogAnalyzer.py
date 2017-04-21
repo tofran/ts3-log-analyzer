@@ -191,9 +191,9 @@ def getReason(string):
 #ACTIONS
 def clientConnected(when, id, ip, nickname = None):
     logging.debug("ClientConnected(" + when + ", " + str(id) + ", " + nickname + ip)
-    #check if user exist
-    if not userExists(id):
-        insertUser(id)
+    #check if client exist
+    if not clientExists(id):
+        insertClient(id)
 
     #check if there is already a connecton opened
     if id in openConn:
@@ -229,13 +229,13 @@ def create_db(conection):
         cur = conection.cursor()
         conection.executescript(schema)
 
-def insertConnection(user, connected, disconnected, reason, ip, log):
+def insertConnection(client_id, connected, disconnected, reason, ip, log):
     cur = db.cursor()
     duration = (datetime.strptime(disconnected, '%Y-%m-%d %H:%M:%S.%f') - datetime.strptime(connected, '%Y-%m-%d %H:%M:%S.%f')).seconds
     cur.execute( \
-        "INSERT INTO connection (user, connected, disconnected, duration, reason, ip, log) " + \
+        "INSERT INTO connection (client, connected, disconnected, duration, reason, ip, log) " + \
         "VALUES (?, ?, ?, ?, ?, ?, ?)", \
-        [user, connected, disconnected, duration, reason, "0.0.0.0" if hideIp else ip, log] \
+        [client_id, connected, disconnected, duration, reason, "0.0.0.0" if hideIp else ip, log] \
         )
     return cur.lastrowid
 
@@ -243,23 +243,23 @@ def deleteConnections(logId):
     cur = db.cursor()
     cur.execute("DELETE FROM connection WHERE log = ?", [logId])
 
-def insertUser(id):
-    logging.debug("Creating new user " + str(id))
+def insertClient(id):
+    logging.debug("Creating new client " + str(id))
     cur = db.cursor()
-    cur.execute("INSERT INTO user (id) VALUES (?)", [id])
+    cur.execute("INSERT INTO client (id) VALUES (?)", [id])
 
-def userExists(id):
+def clientExists(id):
     cur = db.cursor()
-    cur.execute("SELECT id FROM user WHERE user.id = ?", [id])
+    cur.execute("SELECT id FROM client WHERE client.id = ?", [id])
     if cur.fetchone() is not None:
         return True
     return False
 
-def nicknameUsed(user_id, nickname):
+def nicknameUsed(client_id, nickname):
     cur = db.cursor()
-    cur.execute("INSERT OR IGNORE INTO nickname (user, nickname, used) VALUES (?, ?, 0)", [user_id, nickname])
+    cur.execute("INSERT OR IGNORE INTO nickname (client, nickname, used) VALUES (?, ?, 0)", [client_id, nickname])
     cur = db.cursor()
-    cur.execute("UPDATE nickname SET used = used + 1 WHERE user = ? AND nickname = ?", [user_id, nickname])
+    cur.execute("UPDATE nickname SET used = used + 1 WHERE client = ? AND nickname = ?", [client_id, nickname])
 
 def insertLog(filepath, wSize = False):
     cur = db.cursor()
@@ -281,25 +281,30 @@ def checkLog(filepath):
     cur.execute("SELECT id, lines, size FROM log WHERE log.name = ?", [ntpath.basename(filepath)])
     return cur.fetchone()
 
-def getMainNickname(user_id):
+def getNickname(client_id, ammount = 1):
     cur = db.cursor()
-    cur.execute("SELECT nickname, used FROM nickname WHERE user = ? ORDER BY used DESC LIMIT 1", [user_id])
+    cur.execute("SELECT nickname FROM nickname WHERE client = ? ORDER BY used DESC LIMIT ?", [client_id, ammount])
+    return cur.fetchall()
+
+def getCumulativeTime(client_id):
+    cur = db.cursor()
+    cur.execute("SELECT * FROM connection WHERE client = ? GROUP BY client ORDER BY SUM(duration) DESC LIMIT 1", [client_id])
     return cur.fetchone()
 
-def getCumulativeTime(user_id):
+def getlongestCnn(client_id):
     cur = db.cursor()
-    cur.execute("SELECT * FROM connection WHERE user = ? GROUP BY user ORDER BY SUM(duration) DESC LIMIT 1", [user_id])
+    cur.execute("SELECT id, connected, disconnected, SUM(duration) FROM connection WHERE client = ? GROUP BY client LIMIT 1", [client_id])
     return cur.fetchone()
 
-def getlongestCnn(user_id):
+def countCnn(client_id):
     cur = db.cursor()
-    cur.execute("SELECT id, connected, disconnected, SUM(duration) FROM connection WHERE user = ? GROUP BY user LIMIT 1", [user_id])
+    cur.execute("SELECT COUNT(connection) FROM connection WHERE client = ?", [client_id])
     return cur.fetchone()
 
-def countCnn(user_id):
-    cur = db.cursor()
-    cur.execute("SELECT COUNT(connection) FROM connection WHERE user = ?", [user_id])
-    return cur.fetchone()
+def mergeClients():
+    #TODO
+    #"SELECT nickname, m from nickname WHERE n >= 2 GROUP BY nickname ORDER BY COUNT(nickname) AS n DESC"
+    #SELECT nickname, client from nickname where nickname = "natodroid"
 
 if __name__ == '__main__':
     main()
