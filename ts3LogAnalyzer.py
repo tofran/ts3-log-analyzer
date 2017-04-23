@@ -42,7 +42,7 @@ openConn = dict()
 
 def main():
     global db, HIDEIP
-    sys.stdout = codecs.getwriter('utf8')(sys.stdout)
+    #sys.stdout = codecs.getwriter('utf8')(sys.stdout)
     arguments = docopt(__doc__, version='2.0')
     logging.basicConfig( \
             format = "%(levelname)s: %(message)s", \
@@ -58,8 +58,8 @@ def main():
     #check if databse exits
     exists = os.path.exists(database)
     db = sqlite3.connect(database)
-    setupDB()
     if not exists:
+        setupDB()
         logging.info(database + ' created!')
     elif not arguments['--database']:
         logging.warning("-d not specified, using existing " + database)
@@ -82,7 +82,7 @@ def main():
 
 def analyseFile(filepath):
     #check if logfile already analyzed
-    savedLog = checkLog(filepath)
+    savedLog = getLog(filepath)
     size = os.path.getsize(filepath)
     if savedLog and size <= savedLog[2]:
         logging.info("Skipping " + filepath)
@@ -224,12 +224,12 @@ def clientDisconnected(when, id, reason, logId, nickname = None):
 #################
 #DATABSE
 
-def setupDB(stats = True):
+def setupDB(statsTriggers = False):
     with open("schema.sql", 'r') as f:
         schema = f.read()
         cur = db.cursor()
         cur.executescript(schema)
-    if stats:
+    if statsTriggers:
         with open("statsTriggers.sql", 'r') as f:
             schema = f.read()
             cur = db.cursor()
@@ -244,6 +244,7 @@ def insertConnection(client_id, connected, disconnected, reason, ip, log):
         "VALUES (?, ?, ?, ?, ?, ?, ?)", \
         [client_id, connected, disconnected, duration, reason, "0.0.0.0" if hideIp else ip, log] \
         )
+
     return cur.lastrowid
 
 def deleteConnections(logId):
@@ -291,10 +292,41 @@ def updateLog(log_id, lines, size = None):
     else:
         cur.execute("UPDATE logfile SET lines = ? WHERE id = ?", [lines, log_id])
 
-def checkLog(filepath):
+def getLog(filepath):
     cur = db.cursor()
     cur.execute("SELECT id, lines, size FROM logfile WHERE filename = ?", [ntpath.basename(filepath)])
     return cur.fetchone()
+
+#User
+def getUser(client_id):
+    cur = db.cursor()
+    cur.execute("SELECT user FROM client WHERE id = ?", [client_id])
+    return cur.fetchone()
+
+def setUser(client_id, user_id):
+    cur = db.cursor()
+    cur.execute("UPDATE client SET user = ? WHERE id = ?", [user_id, client_id])
+
+def mergeClients(client_id_1, client_id_2):
+    logging.error("Merging client " + client_id_1 + " with " + client_id_2)
+    user1 = getUser(client_id_1)
+    user2 = getUser(client_id_2)
+
+    if(user1 and user2):
+        logging.error(
+            "Client " + client_id_1 + " and " + client_id_2  + \
+            " are both assigned to an user (" + user1 + " and " + user2 + ")" \
+            )
+        return False
+    elif(user1):
+        setUser(client_id_2, user1)
+    else:
+        setUser(client_id_1, user2)
+    return True
+
+def iterativeMerge():
+
+    return
 
 # ----
 
