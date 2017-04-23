@@ -58,11 +58,11 @@ def main():
     #check if databse exits
     exists = os.path.exists(database)
     db = sqlite3.connect(database)
+    setupDB()
     if not exists:
-        create_db(db)
         logging.info(database + ' created!')
     elif not arguments['--database']:
-            logging.warning("-d not specified, using existing " + database)
+        logging.warning("-d not specified, using existing " + database)
 
     #log files
     path = arguments['<log>']
@@ -223,17 +223,17 @@ def clientDisconnected(when, id, reason, logId, nickname = None):
 
 #################
 #DATABSE
-def create_db(conection):
+def setupDB():
     with open("schema.sql", 'r') as f:
         schema = f.read()
-        cur = conection.cursor()
-        conection.executescript(schema)
+        cur = db.cursor()
+        cur.executescript(schema)
 
 def insertConnection(client_id, connected, disconnected, reason, ip, log):
     cur = db.cursor()
     duration = (datetime.strptime(disconnected, '%Y-%m-%d %H:%M:%S.%f') - datetime.strptime(connected, '%Y-%m-%d %H:%M:%S.%f')).seconds
     cur.execute( \
-        "INSERT INTO connection (client, connected, disconnected, duration, reason, ip, log) " + \
+        "INSERT INTO connection (client, connected, disconnected, duration, reason, ip, logfile) " + \
         "VALUES (?, ?, ?, ?, ?, ?, ?)", \
         [client_id, connected, disconnected, duration, reason, "0.0.0.0" if hideIp else ip, log] \
         )
@@ -241,16 +241,16 @@ def insertConnection(client_id, connected, disconnected, reason, ip, log):
 
 def deleteConnections(logId):
     cur = db.cursor()
-    cur.execute("DELETE FROM connection WHERE log = ?", [logId])
+    cur.execute("DELETE FROM connection WHERE logfile = ?", [logId])
 
-def insertClient(id):
-    logging.debug("Creating new client " + str(id))
+def insertClient(client_id):
+    logging.debug("Creating new client " + str(client_id))
     cur = db.cursor()
-    cur.execute("INSERT INTO client (id) VALUES (?)", [id])
+    cur.execute("INSERT INTO client (id) VALUES (?)", [client_id])
 
-def clientExists(id):
+def clientExists(client_id):
     cur = db.cursor()
-    cur.execute("SELECT id FROM client WHERE client.id = ?", [id])
+    cur.execute("SELECT id FROM client WHERE client.id = ?", [client_id])
     if cur.fetchone() is not None:
         return True
     return False
@@ -264,21 +264,21 @@ def nicknameUsed(client_id, nickname):
 def insertLog(filepath, wSize = False):
     cur = db.cursor()
     cur.execute( \
-            "INSERT INTO log (name, size) VALUES (?, ?)", \
+            "INSERT INTO logfile (filename, size) VALUES (?, ?)", \
             [ntpath.basename(filepath), os.path.getsize(filepath) if wSize else 0] \
         )
     return cur.lastrowid
 
-def updateLog(id, lines, size = None):
+def updateLog(log_id, lines, size = None):
     cur = db.cursor()
     if size:
-        cur.execute("UPDATE log SET lines = ?, size = ? WHERE id = ?", [lines, size, id])
+        cur.execute("UPDATE logfile SET lines = ?, size = ? WHERE id = ?", [lines, size, log_id])
     else:
-        cur.execute("UPDATE log SET lines = ? WHERE id = ?", [lines, id])
+        cur.execute("UPDATE logfile SET lines = ? WHERE id = ?", [lines, log_id])
 
 def checkLog(filepath):
     cur = db.cursor()
-    cur.execute("SELECT id, lines, size FROM log WHERE log.name = ?", [ntpath.basename(filepath)])
+    cur.execute("SELECT id, lines, size FROM logfile WHERE filename = ?", [ntpath.basename(filepath)])
     return cur.fetchone()
 
 def getNickname(client_id, ammount = 1):
@@ -293,7 +293,10 @@ def getCumulativeTime(client_id):
 
 def getlongestCnn(client_id):
     cur = db.cursor()
-    cur.execute("SELECT id, connected, disconnected, SUM(duration) FROM connection WHERE client = ? GROUP BY client LIMIT 1", [client_id])
+    cur.execute(
+        "SELECT id, connected, disconnected, SUM(duration) FROM connection WHERE client = ? GROUP BY client LIMIT 1", \
+        [client_id] \
+        )
     return cur.fetchone()
 
 def countCnn(client_id):
@@ -305,6 +308,7 @@ def mergeClients():
     #TODO
     #"SELECT nickname, m from nickname WHERE n >= 2 GROUP BY nickname ORDER BY COUNT(nickname) AS n DESC"
     #SELECT nickname, client from nickname where nickname = "natodroid"
+    return
 
 if __name__ == '__main__':
     main()
