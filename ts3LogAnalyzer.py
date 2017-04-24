@@ -3,18 +3,20 @@
 ts3LogAnalyzer.py
 
 Usage:
-    ts3LogAnalyzer.py <log>
-    ts3LogAnalyzer.py <log> [-d <databse>] [--hide-ip] [--debug] [--output-logging]
+    ts3LogAnalyzer.py <database> -a <path> [--stats] [--hide-ip] [--debug] [--output-logging]
+    ts3LogAnalyzer.py <database> (--merge <c1> <c2> | --iterative-merge) [--debug] [--output-logging]
     ts3LogAnalyzer.py -h | --help
     ts3LogAnalyzer.py -v | --version
 
 Options:
-    -d --database <databse>     Database to use or create (database.db used by default)
-    --hide-ip                   Don't save ips
-    --output-logging            Output logging from THIS program to ts3LogAnalyzer.log
-    --debug                     Output debug information
-    -h --help                   Show this screen
-    -v --version                Show version
+    -a --analyze <path>             Log file or folder to analyze
+    -s --stats                      Pre-populate statistic fields in client and user
+    --hide-ip                       Don't save ips
+    --iterative-merge               Auto detect merging candidates and ask to merge them
+    --output-logging                Output logging from THIS program to ts3LogAnalyzer.log
+    --debug                         Output debug information
+    -h --help                       Show this screen
+    -v --version                    Show version
 """
 
 __author__ = 'ToFran'
@@ -50,35 +52,49 @@ def main():
             handlers = [logging.FileHandler( "ts3LogAnalyzer.log", 'w', 'utf-8')] if arguments['--output-logging'] else None \
         )
 
+    database = arguments['<database>']
+    logpath = arguments['--analyze']
     hideIp = arguments['--hide-ip']
-    database = 'database.db'
-    if arguments['--database']:
-        database = arguments['--database']
+    client_id_1 = arguments['<c1>']
+    client_id_2 = arguments['<c2>']
 
-    #check if databse exits
+    import time
+    start_time = time.time()
+
+    #database
     exists = os.path.exists(database)
     db = sqlite3.connect(database)
     if not exists:
-        setupDB()
+        setupDB(arguments['--stats'])
         logging.info(database + ' created!')
-    elif not arguments['--database']:
-        logging.warning("-d not specified, using existing " + database)
 
-    #log files
-    path = arguments['<log>']
+    if logpath:
+        analyze(logpath)
+    elif client_id_1 and client_id_2:
+        try:
+            client_id_1 = int(client_id_1)
+            client_id_2 = int(client_id_2)
+        except Exception as e:
+            logging.critical("Invalid merge input!")
+            sys.exit()
+
+        mergeClients(client_id_1, client_id_2)
+
+    db.commit()
+    db.close()
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+def analyze(path):
     if os.path.isdir(path):
         logging.debug(path + " is a folder.")
-        for f in glob.glob(arguments['<log>'] + '/*.log'):
+        for f in glob.glob(path + '/*.log'):
             analyseFile(f)
     elif os.path.isfile(path):
         logging.debug(path + " is a file.")
         analyseFile(path)
     else:
-        logging.critical(path + " does not exist! Terminating...")
+        logging.critical(logpath + " does not exist! Terminating...")
         sys.exit()
-
-    db.commit()
-    db.close()
 
 def analyseFile(filepath):
     #check if logfile already analyzed
@@ -224,7 +240,7 @@ def clientDisconnected(when, id, reason, logId, nickname = None):
 #################
 #DATABSE
 
-def setupDB(statsTriggers = False):
+def setupDB(statsTriggers = True):
     with open("schema.sql", 'r') as f:
         schema = f.read()
         cur = db.cursor()
@@ -320,12 +336,24 @@ def mergeClients(client_id_1, client_id_2):
         return False
     elif(user1):
         setUser(client_id_2, user1)
-    else:
+    elif(user2):
         setUser(client_id_1, user2)
+    else:
+        #TODO
+        logging.error("Not implemented!")
+        return False
+    logging.info("Client " + client_id_1 + " and " + client_id_2  + " merged.")
     return True
 
 def iterativeMerge():
-
+    #Get nicknames used multiple times by multiple identeties
+    timesUsed = 200
+    c_nick = db.cursor()
+    c_nick.execute("SELECT nickname from nickname GROUP BY nickname HAVING COUNT(client) >= 2 AND SUM(used) > ? ORDER BY SUM(used) DESC", [timesUsed])
+    for nickname in c_nick:
+        #c_cli = db.cursor()
+        #c_nick.execute("SELECT client from nickname WHERE nickname = ", [timesUsed])
+        print (nickname)
     return
 
 # ----
