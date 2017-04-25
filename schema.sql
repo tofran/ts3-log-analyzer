@@ -9,10 +9,11 @@ CREATE TABLE IF NOT EXISTS user ( --imaginary user, used for merging clients
 
 CREATE TABLE IF NOT EXISTS client ( --represents a TS3 client
 	id	INTEGER NOT NULL PRIMARY KEY,
-	user INTEGER,
+	mainNickname TEXT,
 	nCon	INTEGER NOT NULL DEFAULT 0,
 	totalTime	INTEGER NOT NULL DEFAULT 0,
 	maxTime	INTEGER NOT NULL DEFAULT 0,
+	user INTEGER,
 	FOREIGN KEY(user) REFERENCES user(id)
 );
 
@@ -44,3 +45,13 @@ CREATE TABLE IF NOT EXISTS logfile (
 	lines	INTEGER NOT NULL DEFAULT 0,
 	size INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TRIGGER trigger_user_stats AFTER UPDATE ON client
+	WHEN NEW.user <> NULL
+BEGIN
+  UPDATE user SET
+    nCon = (SELECT SUM(nCon) FROM client WHERE user = NEW.user),
+    totalTime = (SELECT SUM(totalTime) FROM client WHERE user = NEW.user),
+    maxTime = (SELECT MAX(maxTime) FROM client WHERE user = NEW.user)
+    WHERE id = NEW.user;
+END;

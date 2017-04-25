@@ -12,16 +12,17 @@ Options:
     -a --analyze <path>             Log file or folder to analyze
     -s --stats                      Pre-populate statistic fields in client and user
     --hide-ip                       Don't save ips
-    --iterative-merge               Auto detect merging candidates and ask to merge them
+    --iterative-merge               (WIP) Auto detect merging candidates and ask to merge them
     --output-logging                Output logging from THIS program to ts3LogAnalyzer.log
     --debug                         Output debug information
     -h --help                       Show this screen
     -v --version                    Show version
+
+More info @github: https://github.com/ToFran/TS3LogAnalyzer
 """
 
 __author__ = 'ToFran'
 __site__ = 'http://tofran.com/'
-
 __version__ = '2.0'
 __maintainer__ = 'ToFran'
 __email__ = 'me@tofran.com'
@@ -65,7 +66,7 @@ def main():
     exists = os.path.exists(database)
     db = sqlite3.connect(database)
     if not exists:
-        setupDB(arguments['--stats'])
+        setupDB()
         logging.info(database + ' created!')
 
     if logpath:
@@ -77,14 +78,16 @@ def main():
         except Exception as e:
             logging.critical("Invalid merge input!")
             sys.exit()
-
         mergeClients(client_id_1, client_id_2)
     elif arguments['--iterative-merge']:
         iterativeMerge()
 
+    if arguments["--stats"]:
+        generateStats()
+
     db.commit()
     db.close()
-    print("--- %s seconds ---" % (time.time() - start_time))
+    logging.debug("Finished! Execution time: " + str(time.time() - start_time) + "s")
 
 def analyze(path):
     if os.path.isdir(path):
@@ -241,17 +244,11 @@ def clientDisconnected(when, id, reason, logId, nickname = None):
 
 #################
 #DATABSE
-
-def setupDB(statsTriggers = True):
+def setupDB():
     with open("schema.sql", 'r') as f:
         schema = f.read()
         cur = db.cursor()
         cur.executescript(schema)
-    if statsTriggers:
-        with open("statsTriggers.sql", 'r') as f:
-            schema = f.read()
-            cur = db.cursor()
-            cur.executescript(schema)
 
 #Connection
 def insertConnection(client_id, connected, disconnected, reason, ip, log):
@@ -326,14 +323,31 @@ def getUser(client_id):
     cur.execute("SELECT user FROM client WHERE id = ?", [client_id])
     return cur.fetchone()
 
-def setUser(client_id, user_id = -1):
+def setUser(client_id, user_id = None):
     cur = db.cursor()
-    if user_id == -1:
+    if user_id:
         cur.execute("INSERT INTO user () VALUES ()")
         user_id = cur.lastrowid
 
     cur.execute("UPDATE client SET user = ? WHERE id = ?", [user_id, client_id])
     return user_id
+
+def generateStats():
+    logging.debug("Generating statistics")
+    cur = db.cursor()
+    cur.execute("SELECT id FROM client")
+    for tup_id in cur:
+        client_id = str(tup_id[0])
+        cur = db.cursor()
+        cur.execute(
+                "UPDATE client SET " + \
+                    "mainNickname = (SELECT nickname FROM nickname WHERE client = :client_id ORDER BY used DESC LIMIT 1), " + \
+                    "nCon = (SELECT COUNT(*) FROM connection WHERE client = :client_id), " + \
+                    "totalTime = (SELECT SUM(duration) FROM connection WHERE client = :client_id), " \
+                    "maxTime = (SELECT MAX(duration) FROM connection WHERE client = :client_id) " \
+                "WHERE id = :client_id;",
+                {"client_id": client_id}
+            )
 
 def mergeClients(client_id_1, client_id_2):
     logging.error("Merging client " + client_id_1 + " with " + client_id_2)
@@ -364,19 +378,19 @@ def iterativeMerge():
     c_nick.execute("SELECT nickname from nickname GROUP BY nickname HAVING COUNT(client) >= 2 AND SUM(used) >= ? ORDER BY SUM(used) DESC", [timesUsed])
     for tup_nick in c_nick:
         nickname = str(tup_nick[0])
-        c_cli = db.cursor()
-        c_cli.execute("SELECT client from nickname WHERE nickname = ?", [nickname]) #TODO: menimum hours, not merged
-        id_main = str(c_cli.fetchone()[0])
-        for tup_id in c_cli:
-            id = str(tup_id[0])
-            choice = input(
-                "Do you want to merge " + str(getClient(id_main)) + \
-                " with " + str(getClient(id)) + " (y/N)"
-                ).lower()
-            if choice == "y":
-                mergeClients(id_main, id)
-                print("Merged")
-        print (nickname + " " + s)
+        if nickname.lower().index("teamspeakuser") == -1:
+            c_cli = db.cursor()
+            c_cli.execute("SELECT client from nickname WHERE nickname = ?", [nickname]) #TODO: menimum hours, not merged
+            id_main = str(c_cli.fetchone()[0])
+            for tup_id in c_cli:
+                id = str(tup_id[0])
+                choice = input(
+                    "Do you want to merge " + str(getClient(id_main)) + \
+                    " with " + str(getClient(id)) + " (y/N)"
+                    ).lower()
+                if choice == "y":
+                    mergeClients(id_main, id)
+                    print("Merged")
     return
 
 # ----
