@@ -79,6 +79,8 @@ def main():
             sys.exit()
 
         mergeClients(client_id_1, client_id_2)
+    elif arguments['--iterative-merge']:
+        iterativeMerge()
 
     db.commit()
     db.close()
@@ -280,6 +282,11 @@ def clientExists(client_id):
         return True
     return False
 
+def getClient(client_id):
+    cur = db.cursor()
+    cur.execute("SELECT * FROM client WHERE client.id = ?", [client_id])
+    return cur.fetchone()
+
 #Nickname
 def nicknameUsed(client_id, nickname):
     cur = db.cursor()
@@ -319,9 +326,14 @@ def getUser(client_id):
     cur.execute("SELECT user FROM client WHERE id = ?", [client_id])
     return cur.fetchone()
 
-def setUser(client_id, user_id):
+def setUser(client_id, user_id = -1):
     cur = db.cursor()
+    if user_id == -1:
+        cur.execute("INSERT INTO user () VALUES ()")
+        user_id = cur.lastrowid
+
     cur.execute("UPDATE client SET user = ? WHERE id = ?", [user_id, client_id])
+    return user_id
 
 def mergeClients(client_id_1, client_id_2):
     logging.error("Merging client " + client_id_1 + " with " + client_id_2)
@@ -339,21 +351,32 @@ def mergeClients(client_id_1, client_id_2):
     elif(user2):
         setUser(client_id_1, user2)
     else:
-        #TODO
-        logging.error("Not implemented!")
-        return False
+        setUser(client_id_2, setUser(client_id_1))
+
     logging.info("Client " + client_id_1 + " and " + client_id_2  + " merged.")
     return True
 
 def iterativeMerge():
-    #Get nicknames used multiple times by multiple identeties
     timesUsed = 200
+    minimumTime = 50 * 3600 #seconds
+    #Get nicknames used multiple times by multiple identeties
     c_nick = db.cursor()
-    c_nick.execute("SELECT nickname from nickname GROUP BY nickname HAVING COUNT(client) >= 2 AND SUM(used) > ? ORDER BY SUM(used) DESC", [timesUsed])
-    for nickname in c_nick:
-        #c_cli = db.cursor()
-        #c_nick.execute("SELECT client from nickname WHERE nickname = ", [timesUsed])
-        print (nickname)
+    c_nick.execute("SELECT nickname from nickname GROUP BY nickname HAVING COUNT(client) >= 2 AND SUM(used) >= ? ORDER BY SUM(used) DESC", [timesUsed])
+    for tup_nick in c_nick:
+        nickname = str(tup_nick[0])
+        c_cli = db.cursor()
+        c_cli.execute("SELECT client from nickname WHERE nickname = ?", [nickname]) #TODO: menimum hours, not merged
+        id_main = str(c_cli.fetchone()[0])
+        for tup_id in c_cli:
+            id = str(tup_id[0])
+            choice = input(
+                "Do you want to merge " + str(getClient(id_main)) + \
+                " with " + str(getClient(id)) + " (y/N)"
+                ).lower()
+            if choice == "y":
+                mergeClients(id_main, id)
+                print("Merged")
+        print (nickname + " " + s)
     return
 
 # ----
