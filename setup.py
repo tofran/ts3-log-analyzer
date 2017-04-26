@@ -20,7 +20,8 @@ setup(
 	packages = ['ts3LogAnalyzer'],
 	package_data = {'ts3LogAnalyzer': ['schema.sql']},
 	zip_safe = False,
-	install_requires = ['docopt>=0.6.2'],
+	install_requires = ['docopt>=0.6.2', 'html>=1.6'],
+    keywords='teamspeak ts3 ts3server ts',
 	entry_points =
 		"""
 		    [console_scripts]
