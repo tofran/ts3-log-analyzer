@@ -12,7 +12,6 @@ Options:
     -a --analyze <path>             Log file or folder to analyze
     -s --stats                      Pre-populate statistic fields in client and user
     --hide-ip                       Don't save ips
-    --iterative-merge               (WIP) Auto detect merging candidates and ask to merge them
     --output-logging                Output logging from THIS program to ts3LogAnalyzer.log
     --debug                         Output debug information
     -h --help                       Show this screen
@@ -36,8 +35,9 @@ import sqlite3
 import glob
 import html
 import codecs
-from datetime import datetime
+import pkg_resources
 from docopt import docopt
+from datetime import datetime
 
 db = None
 hideIp = False
@@ -247,10 +247,10 @@ def clientDisconnected(when, id, reason, logId, nickname = None):
 #################
 #DATABSE
 def setupDB():
-    with open("schema.sql", 'r') as f:
-        schema = f.read()
-        cur = db.cursor()
-        cur.executescript(schema)
+    resource_path = '/'.join(('schema.sql',))
+    schema = str(pkg_resources.resource_string(__name__, resource_path), 'utf-8')
+    cur = db.cursor()
+    cur.executescript(schema)
     return
 
 #Connection
