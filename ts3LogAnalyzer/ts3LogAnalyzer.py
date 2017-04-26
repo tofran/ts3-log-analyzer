@@ -3,15 +3,16 @@
 ts3LogAnalyzer.py
 
 Usage:
-    ts3LogAnalyzer.py <database> -a <path> [--stats] [--hide-ip] [--debug] [--output-logging]
+    ts3LogAnalyzer.py <database> -a <path> [--stats] [--no-ips] [--debug] [--output-logging]
     ts3LogAnalyzer.py <database> --merge <c1> <c2> [--debug] [--output-logging]
+    ts3LogAnalyzer.py <database> (--stats | --no-ips) [--debug] [--output-logging]
     ts3LogAnalyzer.py -h | --help
     ts3LogAnalyzer.py -v | --version
 
 Options:
     -a --analyze <path>             Log file or folder to analyze
-    -s --stats                      Pre-populate statistic fields in client and user
-    --hide-ip                       Don't save ips
+    -s --stats                      Generate statistic fields for every client
+    -i --no-ips                     Remove ip's from the databse
     --output-logging                Output logging from THIS program to ts3LogAnalyzer.log
     --debug                         Output debug information
     -h --help                       Show this screen
@@ -40,11 +41,10 @@ from docopt import docopt
 from datetime import datetime
 
 db = None
-hideIp = False
 openConn = dict()
 
 def main():
-    global db, HIDEIP
+    global db
     #sys.stdout = codecs.getwriter('utf8')(sys.stdout)
     arguments = docopt(__doc__, version='2.0')
     logging.basicConfig( \
@@ -55,7 +55,6 @@ def main():
 
     database = arguments['<database>']
     logpath = arguments['--analyze']
-    hideIp = arguments['--hide-ip']
     client_id_1 = arguments['<c1>']
     client_id_2 = arguments['<c2>']
 
@@ -80,6 +79,8 @@ def main():
             sys.exit()
         mergeClients(client_id_1, client_id_2)
 
+    if arguments['--hide-ip']:
+        removeIps()
     if arguments["--stats"]:
         generateStats()
 
@@ -102,6 +103,7 @@ def analyze(path):
     return
 
 def analyseFile(filepath):
+    global openConn
     #check if logfile already analyzed
     savedLog = getLog(filepath)
     size = os.path.getsize(filepath)
@@ -260,7 +262,7 @@ def insertConnection(client_id, connected, disconnected, reason, ip, log):
     cur.execute( \
         "INSERT INTO connection (client, connected, disconnected, duration, reason, ip, logfile) " + \
         "VALUES (?, ?, ?, ?, ?, ?, ?)", \
-        [client_id, connected, disconnected, duration, reason, "0.0.0.0" if hideIp else ip, log] \
+        [client_id, connected, disconnected, duration, reason, ip, log] \
         )
     return cur.lastrowid
 
@@ -354,6 +356,11 @@ def generateStats():
                 "WHERE id = :client_id;",
                 {"client_id": client_id}
             )
+    return
+
+def removeIps():
+    cur = db.cursor()
+    cur.execute("UPDATE connection SET ip = '0.0.0.0'")
     return
 
 def mergeClients(client_id_1, client_id_2):
