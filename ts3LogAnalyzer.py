@@ -4,7 +4,7 @@ ts3LogAnalyzer.py
 
 Usage:
     ts3LogAnalyzer.py <database> -a <path> [--stats] [--hide-ip] [--debug] [--output-logging]
-    ts3LogAnalyzer.py <database> (--merge <c1> <c2> | --iterative-merge) [--debug] [--output-logging]
+    ts3LogAnalyzer.py <database> --merge <c1> <c2> [--debug] [--output-logging]
     ts3LogAnalyzer.py -h | --help
     ts3LogAnalyzer.py -v | --version
 
@@ -79,8 +79,6 @@ def main():
             logging.critical("Invalid merge input!")
             sys.exit()
         mergeClients(client_id_1, client_id_2)
-    elif arguments['--iterative-merge']:
-        iterativeMerge()
 
     if arguments["--stats"]:
         generateStats()
@@ -88,6 +86,7 @@ def main():
     db.commit()
     db.close()
     logging.debug("Finished! Execution time: " + str(time.time() - start_time) + "s")
+    return
 
 def analyze(path):
     if os.path.isdir(path):
@@ -100,6 +99,7 @@ def analyze(path):
     else:
         logging.critical(logpath + " does not exist! Terminating...")
         sys.exit()
+    return
 
 def analyseFile(filepath):
     #check if logfile already analyzed
@@ -150,6 +150,7 @@ def analyseFile(filepath):
 
         updateLog(logId, lineN, size)
         logging.info("Analyzed " + str(lineN) + " lines from " + str(logId) + ": " + filepath)
+    return
 
 
 #################
@@ -224,6 +225,7 @@ def clientConnected(when, id, ip, nickname = None):
 
     if nickname:
         nicknameUsed(id, nickname)
+    return
 
 def clientDisconnected(when, id, reason, logId, nickname = None):
     if not id in openConn:
@@ -249,6 +251,7 @@ def setupDB():
         schema = f.read()
         cur = db.cursor()
         cur.executescript(schema)
+    return
 
 #Connection
 def insertConnection(client_id, connected, disconnected, reason, ip, log):
@@ -259,17 +262,18 @@ def insertConnection(client_id, connected, disconnected, reason, ip, log):
         "VALUES (?, ?, ?, ?, ?, ?, ?)", \
         [client_id, connected, disconnected, duration, reason, "0.0.0.0" if hideIp else ip, log] \
         )
-
     return cur.lastrowid
 
 def deleteConnections(logId):
     cur = db.cursor()
     cur.execute("DELETE FROM connection WHERE logfile = ?", [logId])
+    return
 
 def insertClient(client_id):
     logging.debug("Creating new client " + str(client_id))
     cur = db.cursor()
     cur.execute("INSERT INTO client (id) VALUES (?)", [client_id])
+    return
 
 #Client
 def clientExists(client_id):
@@ -290,6 +294,7 @@ def nicknameUsed(client_id, nickname):
     cur.execute("INSERT OR IGNORE INTO nickname (client, nickname, used) VALUES (?, ?, 0)", [client_id, nickname])
     cur = db.cursor()
     cur.execute("UPDATE nickname SET used = used + 1 WHERE client = ? AND nickname = ?", [client_id, nickname])
+    return
 
 def getNickname(client_id, ammount = 1):
     cur = db.cursor()
@@ -311,6 +316,7 @@ def updateLog(log_id, lines, size = None):
         cur.execute("UPDATE logfile SET lines = ?, size = ? WHERE id = ?", [lines, size, log_id])
     else:
         cur.execute("UPDATE logfile SET lines = ? WHERE id = ?", [lines, log_id])
+    return
 
 def getLog(filepath):
     cur = db.cursor()
@@ -348,9 +354,10 @@ def generateStats():
                 "WHERE id = :client_id;",
                 {"client_id": client_id}
             )
+    return
 
 def mergeClients(client_id_1, client_id_2):
-    logging.error("Merging client " + client_id_1 + " with " + client_id_2)
+    logging.debug("Merging client " + client_id_1 + " with " + client_id_2)
     user1 = getUser(client_id_1)
     user2 = getUser(client_id_2)
 
@@ -369,29 +376,6 @@ def mergeClients(client_id_1, client_id_2):
 
     logging.info("Client " + client_id_1 + " and " + client_id_2  + " merged.")
     return True
-
-def iterativeMerge():
-    timesUsed = 200
-    minimumTime = 50 * 3600 #seconds
-    #Get nicknames used multiple times by multiple identeties
-    c_nick = db.cursor()
-    c_nick.execute("SELECT nickname from nickname GROUP BY nickname HAVING COUNT(client) >= 2 AND SUM(used) >= ? ORDER BY SUM(used) DESC", [timesUsed])
-    for tup_nick in c_nick:
-        nickname = str(tup_nick[0])
-        if nickname.lower().index("teamspeakuser") == -1:
-            c_cli = db.cursor()
-            c_cli.execute("SELECT client from nickname WHERE nickname = ?", [nickname]) #TODO: menimum hours, not merged
-            id_main = str(c_cli.fetchone()[0])
-            for tup_id in c_cli:
-                id = str(tup_id[0])
-                choice = input(
-                    "Do you want to merge " + str(getClient(id_main)) + \
-                    " with " + str(getClient(id)) + " (y/N)"
-                    ).lower()
-                if choice == "y":
-                    mergeClients(id_main, id)
-                    print("Merged")
-    return
 
 # ----
 
