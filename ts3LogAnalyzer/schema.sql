@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS nickname (
 CREATE TABLE IF NOT EXISTS log (
 	log_id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 	filename	TEXT NOT NULL UNIQUE,
-	analyzed TEXT NOT NULL,
+	lastanalysis TEXT NOT NULL,
 	lines	INTEGER NOT NULL DEFAULT 0,
 	size INTEGER NOT NULL DEFAULT 0
 );
@@ -57,5 +57,5 @@ BEGIN
     nCon = (SELECT SUM(nCon) FROM client WHERE user_id = NEW.user_id),
     totalTime = (SELECT SUM(totalTime) FROM client WHERE user_id = NEW.user_id),
     maxTime = (SELECT MAX(maxTime) FROM client WHERE user_id = NEW.user_id)
-    WHERE id = NEW.user_id;
+    WHERE user_id = NEW.user_id;
 END;

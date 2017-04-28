@@ -23,7 +23,7 @@ More info @github: https://github.com/ToFran/TS3LogAnalyzer
 
 __author__ = 'ToFran'
 __site__ = 'http://tofran.com/'
-__version__ = '2.0'
+__version__ = '2.0.1'
 __maintainer__ = 'ToFran'
 __email__ = 'me@tofran.com'
 __license__ = 'GNU GPLv3'
@@ -42,6 +42,7 @@ from datetime import datetime
 
 db = None
 openConn = dict()
+DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
 def main():
     global db
@@ -79,7 +80,7 @@ def main():
             sys.exit()
         mergeClients(client_id_1, client_id_2)
 
-    if arguments['--hide-ip']:
+    if arguments['--no-ips']:
         removeIps()
     if arguments["--stats"]:
         generateStats()
@@ -104,7 +105,7 @@ def analyze(path):
 
 def analyseFile(filepath):
     global openConn
-    #check if logfile already analyzed
+    #check if log already analyzed
     savedLog = getLog(filepath)
     size = os.path.getsize(filepath)
     if savedLog and size <= savedLog[2]:
@@ -258,9 +259,9 @@ def setupDB():
 #Connection
 def insertConnection(client_id, connected, disconnected, reason, ip, log):
     cur = db.cursor()
-    duration = (datetime.strptime(disconnected, '%Y-%m-%d %H:%M:%S.%f') - datetime.strptime(connected, '%Y-%m-%d %H:%M:%S.%f')).seconds
+    duration = (datetime.strptime(disconnected, DATE_FORMAT) - datetime.strptime(connected, DATE_FORMAT)).seconds
     cur.execute( \
-        "INSERT INTO connection (client_id, connected, disconnected, duration, reason, ip, logfile) " + \
+        "INSERT INTO connection (client_id, connected, disconnected, duration, reason, ip, log_id) " + \
         "VALUES (?, ?, ?, ?, ?, ?, ?)", \
         [client_id, connected, disconnected, duration, reason, ip, log] \
         )
@@ -303,24 +304,27 @@ def getNickname(client_id, ammount = 1):
 def insertLog(filepath, wSize = False):
     cur = db.cursor()
     cur.execute( \
-            "INSERT INTO log (filename, size) VALUES (?, ?)", \
-            [ntpath.basename(filepath), os.path.getsize(filepath) if wSize else 0] \
+            "INSERT INTO log (filename, size, lastanalysis) VALUES (?, ?, ?)", \
+            [ntpath.basename(filepath), os.path.getsize(filepath) if wSize else 0, getCurTime()] \
         )
     return cur.lastrowid
 
 def updateLog(log_id, lines, size = None):
     cur = db.cursor()
     if size:
-        cur.execute("UPDATE log SET lines = ?, size = ? WHERE log_id = ?", [lines, size, log_id])
+        cur.execute("UPDATE log SET lines = ?, lastanalysis = ?, size = ? WHERE log_id = ?", [lines, getCurTime(), size, log_id])
     else:
-        cur.execute("UPDATE log SET lines = ? WHERE log_id = ?", [lines, log_id])
+        cur.execute("UPDATE log SET lines = ?, lastanalysis = ? WHERE log_id = ?", [lines, getCurTime(), log_id])
     return
+
 
 def getLog(filepath):
     cur = db.cursor()
     cur.execute("SELECT log_id, lines, size FROM log WHERE filename = ?", [ntpath.basename(filepath)])
     return cur.fetchone()
 
+def getCurTime():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 #User
 def getUser(client_id):
     cur = db.cursor()
