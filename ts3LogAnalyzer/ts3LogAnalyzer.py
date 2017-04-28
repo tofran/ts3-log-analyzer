@@ -260,7 +260,7 @@ def insertConnection(client_id, connected, disconnected, reason, ip, log):
     cur = db.cursor()
     duration = (datetime.strptime(disconnected, '%Y-%m-%d %H:%M:%S.%f') - datetime.strptime(connected, '%Y-%m-%d %H:%M:%S.%f')).seconds
     cur.execute( \
-        "INSERT INTO connection (client, connected, disconnected, duration, reason, ip, logfile) " + \
+        "INSERT INTO connection (client_id, connected, disconnected, duration, reason, ip, logfile) " + \
         "VALUES (?, ?, ?, ?, ?, ?, ?)", \
         [client_id, connected, disconnected, duration, reason, ip, log] \
         )
@@ -268,46 +268,42 @@ def insertConnection(client_id, connected, disconnected, reason, ip, log):
 
 def deleteConnections(logId):
     cur = db.cursor()
-    cur.execute("DELETE FROM connection WHERE logfile = ?", [logId])
+    cur.execute("DELETE FROM connection WHERE log_id = ?", [logId])
     return
 
 def insertClient(client_id):
     logging.debug("Creating new client " + str(client_id))
     cur = db.cursor()
-    cur.execute("INSERT INTO client (id) VALUES (?)", [client_id])
+    cur.execute("INSERT INTO client (client_id) VALUES (?)", [client_id])
     return
 
 #Client
 def clientExists(client_id):
-    cur = db.cursor()
-    cur.execute("SELECT id FROM client WHERE client.id = ?", [client_id])
-    if cur.fetchone() is not None:
-        return True
-    return False
+    return getClient(client_id) is not None
 
 def getClient(client_id):
     cur = db.cursor()
-    cur.execute("SELECT * FROM client WHERE client.id = ?", [client_id])
+    cur.execute("SELECT * FROM client WHERE client_id= ?", [client_id])
     return cur.fetchone()
 
 #Nickname
 def nicknameUsed(client_id, nickname):
     cur = db.cursor()
-    cur.execute("INSERT OR IGNORE INTO nickname (client, nickname, used) VALUES (?, ?, 0)", [client_id, nickname])
+    cur.execute("INSERT OR IGNORE INTO nickname (client_id, nickname, used) VALUES (?, ?, 0)", [client_id, nickname])
     cur = db.cursor()
-    cur.execute("UPDATE nickname SET used = used + 1 WHERE client = ? AND nickname = ?", [client_id, nickname])
+    cur.execute("UPDATE nickname SET used = used + 1 WHERE client_id = ? AND nickname = ?", [client_id, nickname])
     return
 
 def getNickname(client_id, ammount = 1):
     cur = db.cursor()
-    cur.execute("SELECT nickname FROM nickname WHERE client = ? ORDER BY used DESC LIMIT ?", [client_id, ammount])
+    cur.execute("SELECT nickname FROM nickname WHERE client_id = ? ORDER BY used DESC LIMIT ?", [client_id, ammount])
     return cur.fetchall()
 
 #Log
 def insertLog(filepath, wSize = False):
     cur = db.cursor()
     cur.execute( \
-            "INSERT INTO logfile (filename, size) VALUES (?, ?)", \
+            "INSERT INTO log (filename, size) VALUES (?, ?)", \
             [ntpath.basename(filepath), os.path.getsize(filepath) if wSize else 0] \
         )
     return cur.lastrowid
@@ -315,45 +311,46 @@ def insertLog(filepath, wSize = False):
 def updateLog(log_id, lines, size = None):
     cur = db.cursor()
     if size:
-        cur.execute("UPDATE logfile SET lines = ?, size = ? WHERE id = ?", [lines, size, log_id])
+        cur.execute("UPDATE log SET lines = ?, size = ? WHERE log_id = ?", [lines, size, log_id])
     else:
-        cur.execute("UPDATE logfile SET lines = ? WHERE id = ?", [lines, log_id])
+        cur.execute("UPDATE log SET lines = ? WHERE log_id = ?", [lines, log_id])
     return
 
 def getLog(filepath):
     cur = db.cursor()
-    cur.execute("SELECT id, lines, size FROM logfile WHERE filename = ?", [ntpath.basename(filepath)])
+    cur.execute("SELECT log_id, lines, size FROM log WHERE filename = ?", [ntpath.basename(filepath)])
     return cur.fetchone()
 
 #User
 def getUser(client_id):
     cur = db.cursor()
-    cur.execute("SELECT user FROM client WHERE id = ?", [client_id])
+    cur.execute("SELECT user_id FROM client WHERE client_id = ?", [client_id])
     return cur.fetchone()
 
 def setUser(client_id, user_id = None):
     cur = db.cursor()
-    if user_id:
+    if user_id: #create user
         cur.execute("INSERT INTO user () VALUES ()")
         user_id = cur.lastrowid
 
-    cur.execute("UPDATE client SET user = ? WHERE id = ?", [user_id, client_id])
+    cur = db.cursor()
+    cur.execute("UPDATE client SET user_id = ? WHERE client_id = ?", [user_id, client_id])
     return user_id
 
 def generateStats():
     logging.debug("Generating statistics")
     cur = db.cursor()
-    cur.execute("SELECT id FROM client")
-    for tup_id in cur:
+    cur.execute("SELECT client_id FROM client") #get all crientid's
+    for tup_id in cur: #set statistics for each one
         client_id = str(tup_id[0])
         cur = db.cursor()
         cur.execute(
                 "UPDATE client SET " + \
-                    "mainNickname = (SELECT nickname FROM nickname WHERE client = :client_id ORDER BY used DESC LIMIT 1), " + \
-                    "nCon = (SELECT COUNT(*) FROM connection WHERE client = :client_id), " + \
-                    "totalTime = (SELECT SUM(duration) FROM connection WHERE client = :client_id), " \
-                    "maxTime = (SELECT MAX(duration) FROM connection WHERE client = :client_id) " \
-                "WHERE id = :client_id;",
+                    "mainNickname = (SELECT nickname FROM nickname WHERE client_id = :client_id ORDER BY used DESC LIMIT 1), " + \
+                    "nCon = (SELECT COUNT(*) FROM connection WHERE client_id = :client_id), " + \
+                    "totalTime = (SELECT SUM(duration) FROM connection WHERE client_id = :client_id), " \
+                    "maxTime = (SELECT MAX(duration) FROM connection WHERE client_id = :client_id) " \
+                "WHERE client_id = :client_id;",
                 {"client_id": client_id}
             )
     return
