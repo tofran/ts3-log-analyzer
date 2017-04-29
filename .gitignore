@@ -12,3 +12,6 @@
 
 #test python file
 test.py
+
+#setuptools egg info
+*.egg-info
