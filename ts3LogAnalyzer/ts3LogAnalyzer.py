@@ -36,6 +36,7 @@ import sqlite3
 import glob
 import html
 import codecs
+import traceback
 import pkg_resources
 from docopt import docopt
 from datetime import datetime
@@ -125,22 +126,30 @@ def analyseFile(filepath):
 
         logging.info("Analyzing log " + str(logId) + ": " + filepath)
 
-        with open(filepath, 'r', encoding='utf8') as f:
-            for line in f:
-                lineN += 1
-                if len(line.strip()) > 0:
-                    logging.debug("Line " + str(lineN))
-                    lineArr = splitLine(line)
-                    message = slpitMessage(lineArr[4])
-                    time = lineArr[0]
+        try:
+            with open(filepath, 'r', encoding='utf8') as f:
+                for line in f:
+                    lineN += 1
+                    if len(line.strip()) > 0:
+                        try:
+                            logging.debug("Line " + str(lineN))
+                            lineArr = splitLine(line)
+                            message = slpitMessage(lineArr[4])
+                            time = lineArr[0]
 
-                    if (lineArr[2] == 'VirtualServerBase' and
-                        len(message) >= 4 and
-                        message[0] == 'client'):
-                            if message[1] == 'connected':
-                                clientConnected(time, getId(message[3]), getIp(message[5]), message[2])
-                            elif message[1] == 'disconnected':
-                                clientDisconnected(time, getId(message[3]), getReason(message[5]), logId, message[2])
+                            if (lineArr[2] == 'VirtualServerBase' and
+                                len(message) >= 4 and
+                                message[0] == 'client'):
+                                    if message[1] == 'connected':
+                                        clientConnected(time, getId(message[3]), getIp(message[5]), message[2])
+                                    elif message[1] == 'disconnected':
+                                        clientDisconnected(time, getId(message[3]), getReason(message[5]), logId, message[2])
+                        except Exception as e:
+                            logging.error("Error parsing line " + str(lineN) + "!")
+                            logging.debug(traceback.format_exc())
+        except (OSError, IOError) as e:
+            logging.critical("Error opening " + filepath + " Terminating!")
+            sys.exit()
 
             #end for
         #end with
