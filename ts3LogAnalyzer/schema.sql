@@ -3,8 +3,9 @@
 
 PRAGMA foreign_keys = ON;
 
-CREATE TABLE IF NOT EXISTS user ( --imaginary user, used for merging clients
+CREATE TABLE IF NOT EXISTS user ( --used for merging clients (has multiple clients)
 	user_id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+	mainNickname TEXT,
 	nCon	INTEGER NOT NULL DEFAULT 0,
 	totalTime	INTEGER NOT NULL DEFAULT 0,
 	maxTime	INTEGER NOT NULL DEFAULT 0
@@ -50,8 +51,8 @@ CREATE TABLE IF NOT EXISTS log (
 	size INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TRIGGER trigger_user_stats AFTER UPDATE ON client
-	WHEN NEW.user_id <> NULL
+CREATE TRIGGER TR_client_update_stats AFTER UPDATE ON client
+	WHEN NEW.user_id <> NULL AND NEW.user_id <> OLD.user_id
 BEGIN
   UPDATE user SET
     nCon = (SELECT SUM(nCon) FROM client WHERE user_id = NEW.user_id),
