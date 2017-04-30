@@ -24,7 +24,7 @@ More info @github: https://github.com/ToFran/TS3LogAnalyzer
 
 __author__ = 'ToFran'
 __site__ = 'http://tofran.com/'
-__version__ = '2.0.1'
+__version__ = '2.1'
 __maintainer__ = 'ToFran'
 __email__ = 'me@tofran.com'
 __license__ = 'GNU GPLv3'
@@ -60,7 +60,6 @@ def main():
     logpath = arguments['--analyze']
     client_id_1 = arguments['<c1>']
     client_id_2 = arguments['<c2>']
-    isMergeable = arguments['--mergeable'] or hasUsers()
 
     import time
     start_time = time.time()
@@ -74,6 +73,8 @@ def main():
 
     if logpath:
         analyze(logpath)
+
+    isMergeable = arguments['--mergeable'] or hasUsers()
     if isMergeable:
         mergeable()
     if client_id_1 and client_id_2:
@@ -340,8 +341,8 @@ def getCurTime():
 #User
 def hasUsers():
     cur = db.cursor()
-    cur.execute("SELECT * FROM client TOP 1", [client_id])
-    return cur.fetchone() is not none
+    cur.execute("SELECT * FROM user LIMIT 1")
+    return cur.fetchone() is not None
 
 def getUser(client_id):
     cur = db.cursor()
@@ -384,8 +385,8 @@ def generateStats(users = False):
         cur.execute("SELECT user_id FROM user") #get all users
         for tup_id in cur: #set statistics for each user
             user_id = str(tup_id[0])
-            cur = db.cursor()
-            cur.execute(
+            currUpdate = db.cursor()
+            currUpdate.execute(
                 "UPDATE user SET " + \
                     "mainNickname = (SELECT nickname FROM nickname INNER JOIN client ON nickname.client_id = client.client_id WHERE client.user_id = :user_id ORDER BY used DESC LIMIT 1), " + \
                     "nCon = (SELECT SUM(nCon) FROM client WHERE user_id = :user_id), " + \
@@ -396,18 +397,24 @@ def generateStats(users = False):
             )
     return
 
-def removeIps():
+def removeIps(string = '0.0.0.0'):
+    """Replaces all ips with the parametized string
+    """
     cur = db.cursor()
-    cur.execute("UPDATE connection SET ip = '0.0.0.0'")
+    cur.execute("UPDATE connection SET ip = ?", string)
     return
 
 def mergeable():
+    """Assign a new user for every client that doen't point to analyze
+    This creates data duplication, but allows clients to be merged and shown properly
+    """
     cur = db.cursor()
     cur.execute("SELECT client_id FROM client WHERE user_id IS NULL") #get all crientid's that don't have user assigned
     for tup_id in cur: #set statistics for each crient
         client_id = str(tup_id[0])
-        cur = db.cursor()
-        cur.execute("UPDATE client SET user_id = ? WHERE client_id = ?", [insertUser(), client_id])
+        newUser = insertUser()
+        currUpdate = db.cursor()
+        currUpdate.execute("UPDATE client SET user_id = ?  WHERE client_id = ?", [newUser, client_id])
 
 
 def mergeClients(client_id_1, client_id_2):
@@ -418,7 +425,9 @@ def mergeClients(client_id_1, client_id_2):
         setUser(client_id_2, user1)
     elif(user2):
         setUser(client_id_1, user2)
-
+    else:
+        logging.critical("Can merge useres, run mergeable before!")
+        return False
 
     logging.info("Client " + client_id_1 + " and " + client_id_2  + " merged.")
     return True

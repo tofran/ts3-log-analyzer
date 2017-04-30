@@ -51,9 +51,19 @@ CREATE TABLE IF NOT EXISTS log (
 	size INTEGER NOT NULL DEFAULT 0
 );
 
-CREATE TRIGGER TR_client_update_stats AFTER UPDATE ON client
+CREATE TRIGGER TR_client_update AFTER UPDATE ON client
 	WHEN NEW.user_id <> NULL AND NEW.user_id <> OLD.user_id
 BEGIN
+	--makes all brother clients point to the same father
+	UPDATE client SET
+		user_id = NEW.user_id
+		WHERE user_id = OLD.user_id;
+
+	--delete lossen users
+	DELETE FROM user
+		WHERE user_id = OLD.user_id;
+
+	--update parent stats
   UPDATE user SET
     nCon = (SELECT SUM(nCon) FROM client WHERE user_id = NEW.user_id),
     totalTime = (SELECT SUM(totalTime) FROM client WHERE user_id = NEW.user_id),
