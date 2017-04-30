@@ -5,7 +5,7 @@ ts3LogAnalyzer.py
 Usage:
     ts3LogAnalyzer.py <database> -a <path> [--stats] [--no-ips] [--mergeable] [--debug] [--output-logging]
     ts3LogAnalyzer.py <database> --merge <c1> <c2> [--debug] [--output-logging]
-    ts3LogAnalyzer.py <database> ([--stats] [--no-ips]) [--debug] [--output-logging]
+    ts3LogAnalyzer.py <database> ([--stats] | [--no-ips]) [--debug] [--output-logging]
     ts3LogAnalyzer.py -h | --help
     ts3LogAnalyzer.py -v | --version
 
@@ -74,7 +74,7 @@ def main():
     if logpath:
         analyze(logpath)
 
-    isMergeable = arguments['--mergeable'] or hasUsers()
+    isMergeable = arguments['--mergeable'] or hasUsers() or arguments['--merge']
     if isMergeable:
         mergeable()
     if client_id_1 and client_id_2:
@@ -356,7 +356,7 @@ def insertUser():
 
 def setUser(client_id, user_id = None):
     cur = db.cursor()
-    if user_id: #create user
+    if not user_id: #create user
         user_id = insertUser()
 
     cur = db.cursor()
@@ -420,16 +420,26 @@ def mergeable():
 def mergeClients(client_id_1, client_id_2):
     user1 = getUser(client_id_1)
     user2 = getUser(client_id_2)
+    if user1 and user2:
+        user1 = user1[0]
+        user2 = user2[0]
 
-    if(user1):
-        setUser(client_id_2, user1)
-    elif(user2):
-        setUser(client_id_1, user2)
+        if user1 != user2:
+            if user1:
+                setUser(client_id_2, user1)
+            elif user2:
+                setUser(client_id_1, user2)
+            else:
+                logging.critical("Clients don't have a user assigned, try running --mergeable before!")
+                return False;
+        else:
+            logging.critical("Clients already merged!")
+            return False;
     else:
-        logging.critical("Can merge useres, run mergeable before!")
+        logging.critical("Client not found!")
         return False
 
-    logging.info("Client " + client_id_1 + " and " + client_id_2  + " merged.")
+    logging.info("Client " + str(client_id_1) + " with " + str(client_id_2)  + " merged.")
     return True
 
 # ----
