@@ -401,7 +401,7 @@ def removeIps(string = '0.0.0.0'):
     """Replaces all ips with the parametized string
     """
     cur = db.cursor()
-    cur.execute("UPDATE connection SET ip = ?", string)
+    cur.execute("UPDATE connection SET ip = ?", [string])
     return
 
 def mergeable():

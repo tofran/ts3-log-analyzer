@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS log (
 );
 
 CREATE TRIGGER TR_client_update AFTER UPDATE ON client
-	WHEN NEW.user_id <> NULL AND NEW.user_id <> OLD.user_id
+	WHEN NEW.user_id NOT NULL AND NEW.user_id <> OLD.user_id
 BEGIN
 	--makes all brother clients point to the same father
 	UPDATE client SET
