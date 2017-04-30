@@ -3,9 +3,9 @@
 ts3LogAnalyzer.py
 
 Usage:
-    ts3LogAnalyzer.py <database> -a <path> [--stats] [--no-ips] [--debug] [--output-logging]
+    ts3LogAnalyzer.py <database> -a <path> [--stats] [--no-ips] [--mergeable] [--debug] [--output-logging]
     ts3LogAnalyzer.py <database> --merge <c1> <c2> [--debug] [--output-logging]
-    ts3LogAnalyzer.py <database> (--stats | --no-ips) [--debug] [--output-logging]
+    ts3LogAnalyzer.py <database> ([--stats] [--no-ips]) [--debug] [--output-logging]
     ts3LogAnalyzer.py -h | --help
     ts3LogAnalyzer.py -v | --version
 
@@ -13,6 +13,7 @@ Options:
     -a --analyze <path>             Log file or folder to analyze
     -s --stats                      Generate statistic fields for every client
     -i --no-ips                     Remove ip's from the databse
+    -m --mergeable                  Make the clients mergeable
     --output-logging                Output logging from THIS program to ts3LogAnalyzer.log
     --debug                         Output debug information
     -h --help                       Show this screen
@@ -59,6 +60,7 @@ def main():
     logpath = arguments['--analyze']
     client_id_1 = arguments['<c1>']
     client_id_2 = arguments['<c2>']
+    isMergeable = arguments['--mergeable'] or hasUsers()
 
     import time
     start_time = time.time()
@@ -68,11 +70,13 @@ def main():
     db = sqlite3.connect(database)
     if not exists:
         setupDB()
-        logging.info(database + ' created!')
+        logging.info(database + " created!")
 
     if logpath:
         analyze(logpath)
-    elif client_id_1 and client_id_2:
+    if isMergeable:
+        mergeable()
+    if client_id_1 and client_id_2:
         try:
             client_id_1 = int(client_id_1)
             client_id_2 = int(client_id_2)
@@ -84,7 +88,7 @@ def main():
     if arguments['--no-ips']:
         removeIps()
     if arguments["--stats"]:
-        generateStats()
+        generateStats(isMergeable)
 
     db.commit()
     db.close()
@@ -147,12 +151,10 @@ def analyseFile(filepath):
                         except Exception as e:
                             logging.error("Error parsing line " + str(lineN) + "!")
                             logging.debug(traceback.format_exc())
+
         except (OSError, IOError) as e:
             logging.critical("Error opening " + filepath + " Terminating!")
             sys.exit()
-
-            #end for
-        #end with
 
         #close remaining opened connections
         if len(openConn) > 0:
@@ -334,37 +336,63 @@ def getLog(filepath):
 
 def getCurTime():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
 #User
+def hasUsers():
+    cur = db.cursor()
+    cur.execute("SELECT * FROM client TOP 1", [client_id])
+    return cur.fetchone() is not none
+
 def getUser(client_id):
     cur = db.cursor()
     cur.execute("SELECT user_id FROM client WHERE client_id = ?", [client_id])
     return cur.fetchone()
 
+def insertUser():
+    cur = db.cursor()
+    cur.execute("INSERT INTO user DEFAULT VALUES")
+    return cur.lastrowid
+
 def setUser(client_id, user_id = None):
     cur = db.cursor()
     if user_id: #create user
-        cur.execute("INSERT INTO user () VALUES ()")
-        user_id = cur.lastrowid
+        user_id = insertUser()
 
     cur = db.cursor()
     cur.execute("UPDATE client SET user_id = ? WHERE client_id = ?", [user_id, client_id])
     return user_id
 
-def generateStats():
-    logging.debug("Generating statistics")
+def generateStats(users = False):
+    logging.info("Generating statistics")
     cur = db.cursor()
     cur.execute("SELECT client_id FROM client") #get all crientid's
-    for tup_id in cur: #set statistics for each one
+    for tup_id in cur: #set statistics for each crient
         client_id = str(tup_id[0])
         cur = db.cursor()
         cur.execute(
                 "UPDATE client SET " + \
                     "mainNickname = (SELECT nickname FROM nickname WHERE client_id = :client_id ORDER BY used DESC LIMIT 1), " + \
                     "nCon = (SELECT COUNT(*) FROM connection WHERE client_id = :client_id), " + \
-                    "totalTime = (SELECT SUM(duration) FROM connection WHERE client_id = :client_id), " \
-                    "maxTime = (SELECT MAX(duration) FROM connection WHERE client_id = :client_id) " \
+                    "totalTime = (SELECT SUM(duration) FROM connection WHERE client_id = :client_id), " + \
+                    "maxTime = (SELECT MAX(duration) FROM connection WHERE client_id = :client_id) " + \
                 "WHERE client_id = :client_id;",
                 {"client_id": client_id}
+            )
+
+    if users:
+        cur = db.cursor()
+        cur.execute("SELECT user_id FROM user") #get all users
+        for tup_id in cur: #set statistics for each user
+            user_id = str(tup_id[0])
+            cur = db.cursor()
+            cur.execute(
+                "UPDATE user SET " + \
+                    "mainNickname = (SELECT nickname FROM nickname INNER JOIN client ON nickname.client_id = client.client_id WHERE client.user_id = :user_id ORDER BY used DESC LIMIT 1), " + \
+                    "nCon = (SELECT SUM(nCon) FROM client WHERE user_id = :user_id), " + \
+                    "totalTime = (SELECT SUM(totalTime) FROM client WHERE user_id = :user_id), " + \
+                    "maxTime = (SELECT MAX(maxTime) FROM client WHERE user_id = :user_id) " + \
+                "WHERE user_id = :user_id;",
+                {"user_id": user_id}
             )
     return
 
@@ -373,23 +401,24 @@ def removeIps():
     cur.execute("UPDATE connection SET ip = '0.0.0.0'")
     return
 
+def mergeable():
+    cur = db.cursor()
+    cur.execute("SELECT client_id FROM client WHERE user_id IS NULL") #get all crientid's that don't have user assigned
+    for tup_id in cur: #set statistics for each crient
+        client_id = str(tup_id[0])
+        cur = db.cursor()
+        cur.execute("UPDATE client SET user_id = ? WHERE client_id = ?", [insertUser(), client_id])
+
+
 def mergeClients(client_id_1, client_id_2):
-    logging.debug("Merging client " + client_id_1 + " with " + client_id_2)
     user1 = getUser(client_id_1)
     user2 = getUser(client_id_2)
 
-    if(user1 and user2):
-        logging.error(
-            "Client " + client_id_1 + " and " + client_id_2  + \
-            " are both assigned to an user (" + user1 + " and " + user2 + ")" \
-            )
-        return False
-    elif(user1):
+    if(user1):
         setUser(client_id_2, user1)
     elif(user2):
         setUser(client_id_1, user2)
-    else:
-        setUser(client_id_2, setUser(client_id_1))
+
 
     logging.info("Client " + client_id_1 + " and " + client_id_2  + " merged.")
     return True
