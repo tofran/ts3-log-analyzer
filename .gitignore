@@ -15,3 +15,6 @@ test.py
 
 #setuptools egg info
 *.egg-info
+
+#tar.gz
+*tar.gz
