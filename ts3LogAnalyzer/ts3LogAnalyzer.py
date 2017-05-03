@@ -5,7 +5,7 @@ ts3LogAnalyzer.py
 Usage:
     ts3LogAnalyzer.py <database> -a <path> [--stats] [--no-ips] [--mergeable] [--debug] [--output-logging]
     ts3LogAnalyzer.py <database> --merge <c1> <c2> [--debug] [--output-logging]
-    ts3LogAnalyzer.py <database> ([--stats] | [--no-ips]) [--debug] [--output-logging]
+    ts3LogAnalyzer.py <database> ([--stats] [--no-ips] [--mergeable]) [--debug] [--output-logging]
     ts3LogAnalyzer.py -h | --help
     ts3LogAnalyzer.py -v | --version
 
@@ -24,7 +24,7 @@ More info @github: https://github.com/ToFran/TS3LogAnalyzer
 
 __author__ = 'ToFran'
 __site__ = 'http://tofran.com/'
-__version__ = '2.1'
+__version__ = '2.1.1'
 __maintainer__ = 'ToFran'
 __email__ = 'me@tofran.com'
 __license__ = 'GNU GPLv3'
@@ -224,6 +224,13 @@ def getReason(string):
     #todo improve reason handeling
     return string
 
+def interval_seconds(start, end):
+    "Returns the number of seconds beetween two string dates, it doen't include millis like total_seconds"
+    diff = datetime.strptime(end, DATE_FORMAT) - datetime.strptime(start, DATE_FORMAT)
+    seconds = diff.days * 86400 # = 24 * 60 * 60
+    seconds += diff.seconds
+    return seconds
+
 #################
 #ACTIONS
 def clientConnected(when, id, ip, nickname = None):
@@ -271,7 +278,7 @@ def setupDB():
 #Connection
 def insertConnection(client_id, connected, disconnected, reason, ip, log):
     cur = db.cursor()
-    duration = (datetime.strptime(disconnected, DATE_FORMAT) - datetime.strptime(connected, DATE_FORMAT)).seconds
+    duration = interval_seconds(connected, disconnected)
     cur.execute( \
         "INSERT INTO connection (client_id, connected, disconnected, duration, reason, ip, log_id) " + \
         "VALUES (?, ?, ?, ?, ?, ?, ?)", \
@@ -415,6 +422,7 @@ def mergeable():
         newUser = insertUser()
         currUpdate = db.cursor()
         currUpdate.execute("UPDATE client SET user_id = ?  WHERE client_id = ?", [newUser, client_id])
+    return
 
 
 def mergeClients(client_id_1, client_id_2):

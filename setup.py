@@ -10,11 +10,11 @@ except:
 
 setup(
 	name = 'ts3LogAnalyzer',
-	version = '2.1',
+	version = '2.1.1',
 	description = 'A cli utility for analyzing teamspeak 3 server logs.',
 	ong_description = long_description,
 	url = 'https://github.com/ToFran/TS3LogAnalyzer/',
-	author = 'Francisco Marques AKA tofran',
+	author = 'Francisco Marques',
 	author_email = 'franscopcmarques@gmail.com',
 	license = 'GPL V3',
 	packages = ['ts3LogAnalyzer'],
