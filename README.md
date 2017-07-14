@@ -23,6 +23,7 @@ Generate useful/fun statistics like the ones you can [find here][ToFran's server
 
 It can also 'merge' identities out of the box, this way you can combine stats for users that have multiple identities - as seen in the [example][ToFran's server statistics] above  (If you are a TeamSpeak fanatic that strongly believes that everyone should backup their identities, and if they don't do it, it's their fault - you can ignore this feature :D )
 
+**Disclaimer:** This repo does not include the web viewer. I'm still developing it, and currently it is not published. This means that you can only generate the DB, and build your own web application. Hopefully I will release [mine](https://github.com/tofran/ts3LogAnalyzer-viwer).
 
 ## Usage
 
@@ -85,7 +86,7 @@ Discussion in the TeamSpeak forum [thread].
 GNU General Public License v3.0
 
 ## Donate
-If you really want to donate you can do it [via PayPal][paypal.me/tofran], for other methods contact me at tofran.com.
+If you really want to donate you can do it [via PayPal](paypal.me/tofran), for other methods contact me at tofran.com.
 
 [ToFran's server statistics]: http://tofran.com/ts/stats/
 [thread]: http://forum.teamspeak.com/showthread.php/112796-RELEASE-TS3logAnalyser-Analyse-your-teamspeak-server-logs
