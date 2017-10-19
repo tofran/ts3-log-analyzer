@@ -14,6 +14,7 @@ Can be used for extracting information like:
  - First and last seen
  - Most used nicknames
  - Total number of connections
+ - Merge users with different identities
  - and much more...
 
 Generate useful/fun statistics like the ones you can [find here][ToFran's server statistics] for my server:
@@ -21,9 +22,11 @@ Generate useful/fun statistics like the ones you can [find here][ToFran's server
 [![preview](https://i.gyazo.com/c6c4689ed2f69cf98cf295619b0235f2.png)][ToFran's server statistics]
 
 
-It can also 'merge' identities out of the box, this way you can combine stats for users that have multiple identities - as seen in the [example][ToFran's server statistics] above  (If you are a TeamSpeak fanatic that strongly believes that everyone should backup their identities, and if they don't do it, it's their fault - you can ignore this feature :D )
+It can also 'merge' identities out of the box, this way you can combine stats for users that have multiple identities - as seen in the [example][ToFran's server statistics] (If you belive that everyone should backup their identities, and if they don't do it, it's their fault - you can ignore this feature :D )
 
-**Disclaimer:** This repo does not include the web viewer. I'm still developing it, and currently it is not published. This means that you can only generate the DB, and build your own web application. Hopefully I will release [mine](https://github.com/tofran/ts3LogAnalyzer-viwer).
+**Disclaimer:** The aim of this project/repo is the log analyzer This repo does not include the web viewer. I'm still developing it, and currently it is not published. This means that you can only generate the DB, and build your own web application. Hopefully I will release [mine](https://github.com/tofran/ts3LogAnalyzer-viwer).
+
+Analy**s**e VS Analy**z**e: Look, English is not my main language, therefore I only found out that anali*s*e could be spelled with an `s` or `z` much after creating and publishing this project. I do not believe that one is better over another. If you cannot live with ts3LogAnaly**z**er with `z` you can always alias it :P.
 
 ## Usage
 
@@ -78,17 +81,26 @@ Options:
     -v --version                    Show version
 ```
 
+## Todo
+
+ - [ ] Performance improvements #3
+ - [ ] Support for other DB's other than SQLite #5
+ - [ ] Python 2 compatibility
+
 ## Discussion
 
-Discussion in the TeamSpeak forum [thread].
+Feature requests and bugs: [issues]
+
+Other discussion: TeamSpeak forum [thread]
 
 ## Licence
 GNU General Public License v3.0
 
-## Donate
-If you really want to donate you can do it [via PayPal](paypal.me/tofran), for other methods contact me at tofran.com.
+## Contact/Donate
+Contact me at [tofran.com](https://tofran.com).
 
 [ToFran's server statistics]: http://tofran.com/ts/stats/
 [thread]: http://forum.teamspeak.com/showthread.php/112796-RELEASE-TS3logAnalyser-Analyse-your-teamspeak-server-logs
 [pypi]: https://pypi.python.org/pypi/ts3LogAnalyzer
+[issues]: https://github.com/tofran/ts3LogAnalyzer/issues
 [v1_java]: (https://github.com/ToFran/TS3LogAnalyzer/tree/v1_java)
