@@ -22,10 +22,10 @@ Options:
 More info @github: https://github.com/ToFran/TS3LogAnalyzer
 """
 
-__author__ = 'ToFran'
+__author__ = 'tofran'
 __site__ = 'http://tofran.com/'
 __version__ = '2.1.1'
-__maintainer__ = 'ToFran'
+__maintainer__ = 'tofran'
 __email__ = 'me@tofran.com'
 __license__ = 'GNU GPLv3'
 
@@ -39,6 +39,7 @@ import html
 import codecs
 import traceback
 import pkg_resources
+import SQLAlchemy
 from docopt import docopt
 from datetime import datetime
 

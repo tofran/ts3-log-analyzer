@@ -1,5 +1,9 @@
 # TS3 Log Analyser
 
+## YOU ARE IN v3, THIS IS A BROKEN DEVELOPMENT VERSION
+
+The main purpose of this version is to improve the performance and change the abstraction with the database, thus adding SQLAlchemy
+
 [![pypi link](https://img.shields.io/pypi/v/ts3LogAnalyzer.svg)][pypi]
 ![Python version 3](https://img.shields.io/badge/Python-3-blue.svg)
 
