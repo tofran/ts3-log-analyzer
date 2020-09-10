@@ -1,2 +1,2 @@
-docopt>=0.6.2
-SQLAlchemy>=1.2.0
+-i https://pypi.org/simple
+docopt==0.6.2

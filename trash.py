@@ -23,7 +23,7 @@ More info @github: https://github.com/ToFran/TS3LogAnalyzer
 """
 
 __author__ = 'tofran'
-__site__ = 'http://tofran.com/'
+__site__ = 'https://tofran.com/'
 __version__ = '2.1.1'
 __maintainer__ = 'tofran'
 __email__ = 'me@tofran.com'
@@ -47,15 +47,16 @@ db = None
 openConn = dict()
 DATE_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
 
+
 def main():
     global db
     #sys.stdout = codecs.getwriter('utf8')(sys.stdout)
     arguments = docopt(__doc__, version='2.0')
-    logging.basicConfig( \
-            format = "%(levelname)s: %(message)s", \
-            level = logging.DEBUG if arguments['--debug'] else logging.INFO, \
-            handlers = [logging.FileHandler( "ts3LogAnalyzer.log", 'w', 'utf-8')] if arguments['--output-logging'] else None \
-        )
+    logging.basicConfig(
+        format="%(levelname)s: %(message)s",
+        level=logging.DEBUG if arguments['--debug'] else logging.INFO,
+        handlers=[logging.FileHandler("ts3LogAnalyzer.log", 'w', 'utf-8')] if arguments['--output-logging'] else None
+    )
 
     database = arguments['<database>']
     logpath = arguments['--analyze']
@@ -65,7 +66,7 @@ def main():
     import time
     start_time = time.time()
 
-    #database
+    # database
     exists = os.path.exists(database)
     db = sqlite3.connect(database)
     if not exists:
@@ -97,6 +98,7 @@ def main():
     logging.debug("Finished! Execution time: " + str(time.time() - start_time) + "s")
     return
 
+
 def analyze(path):
     if os.path.isdir(path):
         logging.debug(path + " is a folder.")
@@ -110,9 +112,10 @@ def analyze(path):
         sys.exit()
     return
 
+
 def analyseFile(filepath):
     global openConn
-    #check if log already analyzed
+    # check if log already analyzed
     savedLog = getLog(filepath)
     size = os.path.getsize(filepath)
     if savedLog and size <= savedLog[2]:
@@ -145,11 +148,12 @@ def analyseFile(filepath):
 
                             if (lineArr[2] == 'VirtualServerBase' and
                                 len(message) >= 4 and
-                                message[0] == 'client'):
-                                    if message[1] == 'connected':
-                                        clientConnected(time, getId(message[3]), getIp(message[5]), message[2])
-                                    elif message[1] == 'disconnected':
-                                        clientDisconnected(time, getId(message[3]), getReason(message[5]), logId, message[2])
+                                    message[0] == 'client'):
+                                if message[1] == 'connected':
+                                    clientConnected(time, getId(message[3]), getIp(message[5]), message[2])
+                                elif message[1] == 'disconnected':
+                                    clientDisconnected(time, getId(message[3]),
+                                                       getReason(message[5]), logId, message[2])
                         except Exception as e:
                             logging.error("Error parsing line " + str(lineN) + "!")
                             logging.debug(traceback.format_exc())
@@ -158,11 +162,12 @@ def analyseFile(filepath):
             logging.critical("Error opening " + filepath + " Terminating!")
             sys.exit()
 
-        #close remaining opened connections
+        # close remaining opened connections
         if len(openConn) > 0:
             logging.debug("Closing " + str(len(openConn)) + " unclosed connections: " + str(openConn))
             for id in openConn:
-                insertConnection(id, openConn[id]['connected'], time, "Dropped at the end of the log", openConn[id]['ip'], logId)
+                insertConnection(id, openConn[id]['connected'], time,
+                                 "Dropped at the end of the log", openConn[id]['ip'], logId)
 
         updateLog(logId, lineN, size)
         logging.info("Analyzed " + str(lineN) + " lines from " + str(logId) + ": " + filepath)
@@ -170,7 +175,7 @@ def analyseFile(filepath):
 
 
 #################
-#PARSING
+# PARSING
 def splitLine(line):
     line = line.strip()
     nSlash = 1
@@ -184,6 +189,7 @@ def splitLine(line):
         pos = line.find('|')
     arr.append(line)
     return arr
+
 
 def slpitMessage(message):
     logging.debug("slpitMessage(" + message + "):")
@@ -208,11 +214,13 @@ def slpitMessage(message):
     logging.debug(":" + str(arr))
     return arr
 
+
 def getId(string):
     if len(string) > 5 and string.startswith("(id:"):
         return int(string[4:-1])
     logging.error("Couln't parse ID from: " + string)
     return -1
+
 
 def getIp(string):
     pos = string.find(':')
@@ -221,26 +229,30 @@ def getIp(string):
     logging.error("Couln't parse IP from: " + string)
     return "0.0.0.0"
 
+
 def getReason(string):
-    #todo improve reason handeling
+    # todo improve reason handeling
     return string
+
 
 def interval_seconds(start, end):
     "Returns the number of seconds beetween two string dates, it doen't include millis like total_seconds"
     diff = datetime.strptime(end, DATE_FORMAT) - datetime.strptime(start, DATE_FORMAT)
-    seconds = diff.days * 86400 # = 24 * 60 * 60
+    seconds = diff.days * 86400  # = 24 * 60 * 60
     seconds += diff.seconds
     return seconds
 
 #################
-#ACTIONS
-def clientConnected(when, id, ip, nickname = None):
+# ACTIONS
+
+
+def clientConnected(when, id, ip, nickname=None):
     logging.debug("ClientConnected(" + when + ", " + str(id) + ", " + nickname + ip)
-    #check if client exist
+    # check if client exist
     if not clientExists(id):
         insertClient(id)
 
-    #check if there is already a connecton opened
+    # check if there is already a connecton opened
     if id in openConn:
         openConn[id]['count'] += 1
     else:
@@ -250,7 +262,8 @@ def clientConnected(when, id, ip, nickname = None):
         nicknameUsed(id, nickname)
     return
 
-def clientDisconnected(when, id, reason, logId, nickname = None):
+
+def clientDisconnected(when, id, reason, logId, nickname=None):
     if not id in openConn:
         logging.error("Client dictonnected without connecting!")
         return False
@@ -268,7 +281,9 @@ def clientDisconnected(when, id, reason, logId, nickname = None):
     return True
 
 #################
-#DATABSE
+# DATABSE
+
+
 def setupDB():
     resource_path = '/'.join(('schema.sql',))
     schema = str(pkg_resources.resource_string(__name__, resource_path), 'utf-8')
@@ -276,21 +291,25 @@ def setupDB():
     cur.executescript(schema)
     return
 
-#Connection
+# Connection
+
+
 def insertConnection(client_id, connected, disconnected, reason, ip, log):
     cur = db.cursor()
     duration = interval_seconds(connected, disconnected)
-    cur.execute( \
-        "INSERT INTO connection (client_id, connected, disconnected, duration, reason, ip, log_id) " + \
-        "VALUES (?, ?, ?, ?, ?, ?, ?)", \
-        [client_id, connected, disconnected, duration, reason, ip, log] \
-        )
+    cur.execute(
+        "INSERT INTO connection (client_id, connected, disconnected, duration, reason, ip, log_id) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [client_id, connected, disconnected, duration, reason, ip, log]
+    )
     return cur.lastrowid
+
 
 def deleteConnections(logId):
     cur = db.cursor()
     cur.execute("DELETE FROM connection WHERE log_id = ?", [logId])
     return
+
 
 def insertClient(client_id):
     logging.debug("Creating new client " + str(client_id))
@@ -298,16 +317,21 @@ def insertClient(client_id):
     cur.execute("INSERT INTO client (client_id) VALUES (?)", [client_id])
     return
 
-#Client
+# Client
+
+
 def clientExists(client_id):
     return getClient(client_id) is not None
+
 
 def getClient(client_id):
     cur = db.cursor()
     cur.execute("SELECT * FROM client WHERE client_id= ?", [client_id])
     return cur.fetchone()
 
-#Nickname
+# Nickname
+
+
 def nicknameUsed(client_id, nickname):
     cur = db.cursor()
     cur.execute("INSERT OR IGNORE INTO nickname (client_id, nickname, used) VALUES (?, ?, 0)", [client_id, nickname])
@@ -315,24 +339,29 @@ def nicknameUsed(client_id, nickname):
     cur.execute("UPDATE nickname SET used = used + 1 WHERE client_id = ? AND nickname = ?", [client_id, nickname])
     return
 
-def getNickname(client_id, ammount = 1):
+
+def getNickname(client_id, ammount=1):
     cur = db.cursor()
     cur.execute("SELECT nickname FROM nickname WHERE client_id = ? ORDER BY used DESC LIMIT ?", [client_id, ammount])
     return cur.fetchall()
 
-#Log
-def insertLog(filepath, wSize = False):
+# Log
+
+
+def insertLog(filepath, wSize=False):
     cur = db.cursor()
-    cur.execute( \
-            "INSERT INTO log (filename, size, lastanalysis) VALUES (?, ?, ?)", \
-            [ntpath.basename(filepath), os.path.getsize(filepath) if wSize else 0, getCurTime()] \
-        )
+    cur.execute(
+        "INSERT INTO log (filename, size, lastanalysis) VALUES (?, ?, ?)",
+        [ntpath.basename(filepath), os.path.getsize(filepath) if wSize else 0, getCurTime()]
+    )
     return cur.lastrowid
 
-def updateLog(log_id, lines, size = None):
+
+def updateLog(log_id, lines, size=None):
     cur = db.cursor()
     if size:
-        cur.execute("UPDATE log SET lines = ?, lastanalysis = ?, size = ? WHERE log_id = ?", [lines, getCurTime(), size, log_id])
+        cur.execute("UPDATE log SET lines = ?, lastanalysis = ?, size = ? WHERE log_id = ?",
+                    [lines, getCurTime(), size, log_id])
     else:
         cur.execute("UPDATE log SET lines = ?, lastanalysis = ? WHERE log_id = ?", [lines, getCurTime(), log_id])
     return
@@ -343,82 +372,92 @@ def getLog(filepath):
     cur.execute("SELECT log_id, lines, size FROM log WHERE filename = ?", [ntpath.basename(filepath)])
     return cur.fetchone()
 
+
 def getCurTime():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-#User
+# User
+
+
 def hasUsers():
     cur = db.cursor()
     cur.execute("SELECT * FROM user LIMIT 1")
     return cur.fetchone() is not None
+
 
 def getUser(client_id):
     cur = db.cursor()
     cur.execute("SELECT user_id FROM client WHERE client_id = ?", [client_id])
     return cur.fetchone()
 
+
 def insertUser():
     cur = db.cursor()
     cur.execute("INSERT INTO user DEFAULT VALUES")
     return cur.lastrowid
 
-def setUser(client_id, user_id = None):
+
+def setUser(client_id, user_id=None):
     cur = db.cursor()
-    if not user_id: #create user
+    if not user_id:  # create user
         user_id = insertUser()
 
     cur = db.cursor()
     cur.execute("UPDATE client SET user_id = ? WHERE client_id = ?", [user_id, client_id])
     return user_id
 
-def generateStats(users = False):
+
+def generateStats(users=False):
     logging.info("Generating statistics")
     cur = db.cursor()
-    cur.execute("SELECT client_id FROM client") #get all crientid's
-    for tup_id in cur: #set statistics for each crient
+    cur.execute("SELECT client_id FROM client")  # get all crientid's
+    for tup_id in cur:  # set statistics for each crient
         client_id = str(tup_id[0])
         cur = db.cursor()
         cur.execute(
-                "UPDATE client SET " + \
-                    "mainNickname = (SELECT nickname FROM nickname WHERE client_id = :client_id ORDER BY used DESC LIMIT 1), " + \
-                    "nCon = (SELECT COUNT(*) FROM connection WHERE client_id = :client_id), " + \
-                    "totalTime = (SELECT SUM(duration) FROM connection WHERE client_id = :client_id), " + \
-                    "maxTime = (SELECT MAX(duration) FROM connection WHERE client_id = :client_id) " + \
-                "WHERE client_id = :client_id;",
-                {"client_id": client_id}
-            )
+            "UPDATE client SET " +
+            "mainNickname = (SELECT nickname FROM nickname WHERE client_id = :client_id ORDER BY used DESC LIMIT 1), " +
+            "nCon = (SELECT COUNT(*) FROM connection WHERE client_id = :client_id), " +
+            "totalTime = (SELECT SUM(duration) FROM connection WHERE client_id = :client_id), " +
+            "maxTime = (SELECT MAX(duration) FROM connection WHERE client_id = :client_id) " +
+            "WHERE client_id = :client_id;",
+            {"client_id": client_id}
+        )
 
     if users:
         cur = db.cursor()
-        cur.execute("SELECT user_id FROM user") #get all users
-        for tup_id in cur: #set statistics for each user
+        cur.execute("SELECT user_id FROM user")  # get all users
+        for tup_id in cur:  # set statistics for each user
             user_id = str(tup_id[0])
             currUpdate = db.cursor()
             currUpdate.execute(
-                "UPDATE user SET " + \
-                    "mainNickname = (SELECT nickname FROM nickname INNER JOIN client ON nickname.client_id = client.client_id WHERE client.user_id = :user_id ORDER BY used DESC LIMIT 1), " + \
-                    "nCon = (SELECT SUM(nCon) FROM client WHERE user_id = :user_id), " + \
-                    "totalTime = (SELECT SUM(totalTime) FROM client WHERE user_id = :user_id), " + \
-                    "maxTime = (SELECT MAX(maxTime) FROM client WHERE user_id = :user_id) " + \
+                "UPDATE user SET " +
+                "mainNickname = (SELECT nickname FROM nickname INNER JOIN client ON nickname.client_id = client.client_id WHERE client.user_id = :user_id ORDER BY used DESC LIMIT 1), " +
+                "nCon = (SELECT SUM(nCon) FROM client WHERE user_id = :user_id), " +
+                "totalTime = (SELECT SUM(totalTime) FROM client WHERE user_id = :user_id), " +
+                "maxTime = (SELECT MAX(maxTime) FROM client WHERE user_id = :user_id) " +
                 "WHERE user_id = :user_id;",
                 {"user_id": user_id}
             )
     return
 
-def removeIps(string = '0.0.0.0'):
+
+def removeIps(string='0.0.0.0'):
     """Replaces all ips with the parametized string
     """
     cur = db.cursor()
     cur.execute("UPDATE connection SET ip = ?", [string])
     return
 
+
 def mergeable():
     """Assign a new user for every client that doen't point to analyze
     This creates data duplication, but allows clients to be merged and shown properly
     """
     cur = db.cursor()
-    cur.execute("SELECT client_id FROM client WHERE user_id IS NULL") #get all crientid's that don't have user assigned
-    for tup_id in cur: #set statistics for each crient
+    # get all crientid's that don't have user assigned
+    cur.execute("SELECT client_id FROM client WHERE user_id IS NULL")
+    for tup_id in cur:  # set statistics for each crient
         client_id = str(tup_id[0])
         newUser = insertUser()
         currUpdate = db.cursor()
@@ -440,18 +479,19 @@ def mergeClients(client_id_1, client_id_2):
                 setUser(client_id_1, user2)
             else:
                 logging.critical("Clients don't have a user assigned, try running --mergeable before!")
-                return False;
+                return False
         else:
             logging.critical("Clients already merged!")
-            return False;
+            return False
     else:
         logging.critical("Client not found!")
         return False
 
-    logging.info("Client " + str(client_id_1) + " with " + str(client_id_2)  + " merged.")
+    logging.info("Client " + str(client_id_1) + " with " + str(client_id_2) + " merged.")
     return True
 
 # ----
+
 
 if __name__ == '__main__':
     main()
